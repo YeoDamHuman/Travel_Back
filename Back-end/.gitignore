@@ -1,0 +1,52 @@
+### 일반적으로 무시해야 할 파일들 ###
+HELP.md
+
+### Gradle ###
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### STS (Spring Tool Suite) ###
+.apt_generated/
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+.sts4-cache/
+
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+### IntelliJ IDEA ###
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### VS Code ###
+.vscode/
+
+### OS/툴 공통 ###
+.DS_Store
+Thumbs.db
+
+### Spring Boot ###
+# application.properties 또는 YAML 파일은 민감 정보를 포함하므로 일반적으로 무시
+src/main/resources/application.properties
+src/main/resources/application.yml
+
+
