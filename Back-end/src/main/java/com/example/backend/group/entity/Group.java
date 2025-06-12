@@ -1,5 +1,6 @@
-package com.example.backend.domain;
+package com.example.backend.group.entity;
 
+import com.example.backend.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;

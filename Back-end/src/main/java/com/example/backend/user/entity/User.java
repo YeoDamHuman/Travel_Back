@@ -1,4 +1,4 @@
-package com.example.backend.domain;
+package com.example.backend.user.entity;
 
 
 import jakarta.persistence.*;
@@ -10,20 +10,29 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "comment")
+@Table(name = "user")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
-public class Comment {
+public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "comment_id", columnDefinition = "BINARY(16)")
-    private UUID commentId;
+    @Column(name = "user_id", columnDefinition = "BINARY(16)")
+    private UUID userId;
 
-    @Column(name = "content", length = 500, nullable = false)
-    private String content;
+    @Column(name = "email", length = 40, nullable = false, unique = true)
+    private String email;
+
+    @Column(name = "password", length = 100, nullable = false)
+    private String password;
+
+    @Column(name = "address", length = 255, nullable = false)
+    private String address;
+
+    @Column(name = "user_name", length = 40, nullable = false)
+    private String userName;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -32,13 +41,4 @@ public class Comment {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "board_id")
-    private Board boardId;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
-    private User userId;
-
 }

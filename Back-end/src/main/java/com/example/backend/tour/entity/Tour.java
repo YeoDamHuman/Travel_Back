@@ -1,11 +1,11 @@
-package com.example.backend.domain;
+package com.example.backend.tour.entity;
 
 
+import com.example.backend.cart.entity.Cart;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.util.UUID;
 
 @Entity
 @Table(name = "tour")

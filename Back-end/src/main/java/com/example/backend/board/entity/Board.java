@@ -1,6 +1,7 @@
-package com.example.backend.domain;
+package com.example.backend.board.entity;
 
 
+import com.example.backend.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -10,29 +11,22 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "user")
+@Table(name = "board")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
-public class User {
-
+public class Board {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "user_id", columnDefinition = "BINARY(16)")
-    private UUID userId;
+    @Column(name = "board_id", columnDefinition = "BINARY(16)")
+    private UUID boardId;
 
-    @Column(name = "email", length = 40, nullable = false, unique = true)
-    private String email;
+    @Column(name = "title", length = 50, nullable = false)
+    private String title;
 
-    @Column(name = "password", length = 100, nullable = false)
-    private String password;
-
-    @Column(name = "address", length = 255, nullable = false)
-    private String address;
-
-    @Column(name = "user_name", length = 40, nullable = false)
-    private String userName;
+    @Column(name = "content", length = 1000, nullable = false)
+    private String content;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -41,4 +35,11 @@ public class User {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    @Column(name = "count", nullable = false)
+    private int count;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User userId;
 }

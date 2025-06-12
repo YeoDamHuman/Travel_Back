@@ -1,10 +1,9 @@
-package com.example.backend.domain;
+package com.example.backend.cart.entity;
 
 
+import com.example.backend.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
-
-import java.util.UUID;
 
 @Entity
 @Table(name = "cart")
