@@ -1,5 +1,7 @@
-package com.example.backend.domain;
+package com.example.backend.scheduleItem.entity;
 
+import com.example.backend.cart.entity.Cart;
+import com.example.backend.schedule.entity.Schedule;
 import jakarta.persistence.*;
 import lombok.*;
 
