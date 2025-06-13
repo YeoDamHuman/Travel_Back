@@ -25,7 +25,7 @@ jobs:
       - name: Grant execute permission for gradlew
         # 'Back' 폴더 안에 'Back-end' 폴더가 있고, 그 안에 gradlew가 있습니다.
         # 실제 gradlew 스크립트의 경로를 정확히 지정합니다.
-        run: chmod +x ./Back/Back-end/gradlew
+        run: chmod +x ./Back-end/gradlew
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -35,7 +35,7 @@ jobs:
       - name: Build with Gradle Wrapper
         # 실제 gradlew가 존재하는 디렉토리로 working-directory를 설정합니다.
         # './Back/Back-end'는 레포지토리 루트 아래의 'Back' 폴더 안의 'Back-end' 폴더를 의미합니다.
-        working-directory: ./Back/Back-end
+        working-directory: ./Back-end
         run: ./gradlew build
 
   dependency-submission:
@@ -59,4 +59,4 @@ jobs:
           # dependency-submission 액션의 경우 'build-root-directory'를 사용하여
           # Gradle 프로젝트의 루트를 지정해야 합니다.
           # 이 경로는 actions/checkout으로 가져온 레포지토리 루트를 기준으로 합니다.
-          build-root-directory: ./Back/Back-end
+          build-root-directory: ./Back-end
