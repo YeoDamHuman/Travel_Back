@@ -47,4 +47,4 @@ jobs:
       - name: Generate and submit dependency graph
         uses: gradle/actions/dependency-submission@v4
         with:
-          build-root-directory: ./BackEnd  # <-- 이 부분도 필수
+          build-root-directory: ./BackEnd  # <-- 이 부분도 
