@@ -25,7 +25,13 @@ jobs:
       uses: gradle/actions/setup-gradle@417ae3ccd767c252f5661f1ace9f835f9654f2b5 # v3.1.0
 
     - name: Grant execute permission for gradlew
+      # 'gradlew' 파일이 실제 존재하는 하위 디렉토리(예: 'my-app' 또는 'backend')로 작업 디렉토리를 변경합니다.
+      # 프로젝트 구조에 맞게 'your-project-subdirectory'를 실제 경로로 바꿔주세요.
+      working-directory: ./Back-end # <-- 여기에 경로 추가
       run: chmod +x gradlew
 
     - name: Build with Gradle Wrapper
+      # 'gradlew' 파일이 실제 존재하는 하위 디렉토리(예: 'my-app' 또는 'backend')로 작업 디렉토리를 변경합니다.
+      # 프로젝트 구조에 맞게 'your-project-subdirectory'를 실제 경로로 바꿔주세요.
+      working-directory: ./Back-end # <-- 여기에 경로 추가
       run: ./gradlew build
