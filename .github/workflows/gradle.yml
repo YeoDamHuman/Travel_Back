@@ -10,10 +10,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: read # 레포지토리 읽기 권한
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -21,22 +22,29 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
+      - name: Grant execute permission for gradlew
+        # 프로젝트 루트에 Back-end 디렉토리가 있다고 가정하고,
+        # gradlew 스크립트는 Back-end/gradlew에 있을 것입니다.
+        run: chmod +x ./Back-end/gradlew
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
-        with:
-          build-root-directory: ./BackEnd  # <--캐시 및 Gradle 설정 대상 디렉터리 명시
+        # build-root-directory 입력은 유효하지 않으므로 제거합니다.
+        # 이 액션은 자동으로 Gradle 캐싱을 처리합니다.
 
       - name: Build with Gradle Wrapper
-        working-directory: ./BackEnd      # <-- 실제 ./gradlew가 존재하는 경로에서 실행
+        # 실제 gradlew가 존재하는 디렉토리로 working-directory를 설정합니다.
+        working-directory: ./Back-end
         run: ./gradlew build
 
   dependency-submission:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write # 종속성 그래프 제출을 위한 쓰기 권한
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -46,5 +54,13 @@ jobs:
 
       - name: Generate and submit dependency graph
         uses: gradle/actions/dependency-submission@v4
+        # build-root-directory 대신 working-directory를 사용하거나,
+        # 해당 액션이 프로젝트 루트를 기준으로 작동하도록 합니다.
+        # 대부분의 경우 dependency-submission 액션은 `working-directory`를 명시할 필요 없이
+        # 프로젝트 루트에서 `gradlew`를 찾아 작동합니다.
+        # 하지만 명확성을 위해 프로젝트의 서브 디렉토리에 있다면,
+        # 아래처럼 working-directory를 사용하는 것이 좋습니다.
         with:
-          build-root-directory: ./BackEnd  # <-- 이 부분도 
+          # 이 액션은 기본적으로 프로젝트 루트에서 build.gradle을 찾습니다.
+          # 만약 build.gradle이 ./Back-end 안에 있다면, 이 디렉토리에서 실행하도록 합니다.
+          working-directory: ./Back-end # <--- 이 부분도 ./Back-end로 변경
