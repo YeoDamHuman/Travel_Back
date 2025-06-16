@@ -1,11 +1,8 @@
 package com.example.backend.user.entity;
-
-
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -41,4 +38,15 @@ public class User {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "user_role", length = 20, nullable = false)
+    private Role userRole = Role.USER;  // 기본값 USER로 설정
+
+    public enum Role {
+        USER,
+        ADMIN
+    }
 }
+
+
