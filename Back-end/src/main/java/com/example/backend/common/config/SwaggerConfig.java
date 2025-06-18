@@ -28,7 +28,7 @@ public class SwaggerConfig {
 
     private Info apiInfo() {
         return new Info()
-                .title("얼렁뚱땅땅") // API의 제목
+                .title("여담人") // API의 제목
                 .description("API 명세서") // API에 대한 설명
                 .version("1.0"); // API의 버전
     }
