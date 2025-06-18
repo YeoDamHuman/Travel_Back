@@ -8,8 +8,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.Optional;
 
-//@Configuration
-//@EnableJpaAuditing
+@Configuration
+@EnableJpaAuditing
 public class JpaConfig {
     @Bean
     public AuditorAware<String> auditorProvider() {
