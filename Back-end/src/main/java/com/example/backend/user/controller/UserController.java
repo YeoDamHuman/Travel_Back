@@ -18,17 +18,6 @@ public class UserController {
 
     private final UserService userService;
 
-    @PostMapping("/login")
-    @Operation(summary = "기본 유저 로그인", description = "카카오톡 로그인이 아닌 로컬 로그인 API")
-    public ResponseEntity<?> login(@RequestBody UserRequest.loginRequest login) {
-        try {
-            JwtDto jwtDto = userService.login(login);  // 토큰 생성된 JwtDto 받음
-            return ResponseEntity.ok(jwtDto);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
-    }
-
     @PostMapping("/register")
     @Operation(summary = "기본 유저 회원가입", description = "로컬 회원가입 API")
     public ResponseEntity<?> register(@RequestBody UserRequest.registerRequest request) {
@@ -43,5 +32,18 @@ public class UserController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
+    @PostMapping("/login")
+    @Operation(summary = "기본 유저 로그인", description = "카카오톡 로그인이 아닌 로컬 로그인 API")
+    public ResponseEntity<?> login(@RequestBody UserRequest.loginRequest login) {
+        try {
+            JwtDto jwtDto = userService.login(login);  // 토큰 생성된 JwtDto 받음
+            return ResponseEntity.ok(jwtDto);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+
 
 }
