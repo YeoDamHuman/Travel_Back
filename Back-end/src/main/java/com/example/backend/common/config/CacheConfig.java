@@ -16,8 +16,8 @@ public class CacheConfig {
     public CacheManager cacheManager() {
         CaffeineCacheManager cacheManager = new CaffeineCacheManager("tours", "weather");
         cacheManager.setCaffeine(Caffeine.newBuilder()
-                .expireAfterWrite(10, TimeUnit.MINUTES)
-                .maximumSize(100));
+                .expireAfterWrite(10, TimeUnit.MINUTES) //10분 후 자동 삭제
+                .maximumSize(100)); //최대 100개까지 저장
         return cacheManager;
     }
 }
