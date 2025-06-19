@@ -39,8 +39,8 @@ public class SecurityConfig {
                                 "/user/register",
                                 "/user/login",
                                 "/mail/send",
-                                "/mail/verify"
-
+                                "/mail/verify",
+                                "/health/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
