@@ -39,6 +39,9 @@ public class Board {
     @Column(name = "count", nullable = false)
     private int count;
 
+    @Column(name = "board_report", nullable = false)
+    private int boardReport;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User userId;
