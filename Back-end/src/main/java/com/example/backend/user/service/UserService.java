@@ -51,7 +51,7 @@ public class UserService {
         User user = User.builder()
                 .email(register.getEmail())
                 .password(encodedPassword)
-                .address(register.getAddress())
+                .userNickname(register.getUserNickname())
                 .userName(register.getUserName())
                 .userRole(User.Role.USER)
                 .build();

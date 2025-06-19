@@ -27,7 +27,7 @@ public class UserRequest {
         private String email;
         @Schema(description = "사용자 비밀번호", example = "test1234")
         private String password;
-        @Schema(description = "사용자 주소", example = "서울특별시 광진구 능동로 195-16")
-        private String address;
+        @Schema(description = "사용자 닉네임", example = "광진구 총잡이 김재균")
+        private String userNickname;
     }
 }

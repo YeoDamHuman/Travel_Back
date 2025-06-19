@@ -22,14 +22,14 @@ public class User {
     @Column(name = "email", length = 40, nullable = false, unique = true)
     private String email;
 
-    @Column(name = "password", length = 100, nullable = false)
+    @Column(name = "password", length = 100, nullable = true)
     private String password;
-
-    @Column(name = "address", length = 255, nullable = false)
-    private String address;
-
+    
     @Column(name = "user_name", length = 40, nullable = false)
     private String userName;
+
+    @Column(name = "user_nickname", length = 40, nullable = false)
+    private String userNickname;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
