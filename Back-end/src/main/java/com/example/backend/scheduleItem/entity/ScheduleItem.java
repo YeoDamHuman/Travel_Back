@@ -1,12 +1,11 @@
 package com.example.backend.scheduleItem.entity;
 
-import com.example.backend.cart.entity.Cart;
 import com.example.backend.schedule.entity.Schedule;
+import com.example.backend.tour.entity.Tour;
 import jakarta.persistence.*;
 import lombok.*;
-
 import java.math.BigInteger;
-import java.sql.Time;
+import java.time.LocalTime;
 import java.util.UUID;
 
 @Entity
@@ -29,10 +28,10 @@ public class ScheduleItem {
     private Integer dayNumber;
 
     @Column(name = "start_time", nullable = false)
-    private Time startTime;
+    private LocalTime startTime;
 
     @Column(name = "end_time", nullable = false)
-    private Time endTime;
+    private LocalTime endTime;
 
     @Column(name = "memo", length = 100)
     private String memo;
@@ -45,7 +44,16 @@ public class ScheduleItem {
     private Schedule scheduleId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "cart_id", nullable = false)
-    private Cart cartId;
+    @JoinColumn(name = "tour_id", nullable = true)
+    private Tour tourId;
 
+
+    public void updateScheduleItem(UUID placeId, Integer dayNumber, LocalTime startTime, LocalTime endTime, String memo, BigInteger cost) {
+        this.placeId = placeId;
+        this.dayNumber = dayNumber;
+        this.startTime = startTime;
+        this.endTime = endTime;
+        this.memo = memo;
+        this.cost = cost;
+    }
 }

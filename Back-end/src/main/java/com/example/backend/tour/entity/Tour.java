@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 @Entity
 @Table(name = "tour")
@@ -16,9 +17,9 @@ import java.math.BigDecimal;
 public class Tour {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "tour_id")
-    private Integer tourId;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "tour_id", columnDefinition = "BINARY(16)", nullable = false)
+    private UUID tourId;
 
     @Column(name = "longitude", precision = 10, scale = 7, nullable = false)
     private BigDecimal longitude;
@@ -38,4 +39,5 @@ public class Tour {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cart_id", nullable = false)
     private Cart cartId;
+
 }

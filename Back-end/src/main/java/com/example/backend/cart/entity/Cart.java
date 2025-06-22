@@ -5,6 +5,8 @@ import com.example.backend.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.UUID;
+
 @Entity
 @Table(name = "cart")
 @Getter
@@ -14,9 +16,9 @@ import lombok.*;
 public class Cart {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "cart_id")
-    private Integer cartId;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "cart_id", columnDefinition = "BINARY(16)", nullable = false)
+    private UUID cartId;
 
     @Column(name = "region", length = 255, nullable = false)
     private String region;
