@@ -8,6 +8,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigInteger;
 import java.sql.Time;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -28,10 +29,10 @@ public class Schedule {
     private String scheduleName;
 
     @Column(name = "start_date", nullable = false)
-    private Time startDate;
+    private LocalDate startDate;
 
     @Column(name = "end_date", nullable = false)
-    private Time endDate;
+    private LocalDate endDate;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -44,7 +45,7 @@ public class Schedule {
     @Column(name = "budget", nullable = false)
     private BigInteger budget;
 
-    @OneToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "group_id")
     private Group groupId;
 

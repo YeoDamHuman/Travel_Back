@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -39,6 +40,7 @@ public class UserService {
     }
 
     // 1️⃣ 회원가입 로직
+    @Transactional
     public void register(UserRequest.registerRequest register) {
         if (!isValidEmail(register.getEmail())) {
             throw new IllegalArgumentException("유효하지 않은 이메일 형식입니다.");
