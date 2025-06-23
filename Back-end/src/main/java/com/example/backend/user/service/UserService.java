@@ -1,5 +1,7 @@
 package com.example.backend.user.service;
 
+import com.example.backend.cart.entity.Cart;
+import com.example.backend.cart.repository.CartRepository;
 import com.example.backend.jwt.config.JWTGenerator;
 import com.example.backend.jwt.dto.JwtDto;
 import com.example.backend.user.dto.request.UserRequest;
@@ -8,6 +10,7 @@ import com.example.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -38,6 +41,9 @@ public class UserService {
         }
     }
 
+    @Autowired
+    private CartRepository cartRepository;
+
     // 1️⃣ 회원가입 로직
     public void register(UserRequest.registerRequest register) {
         if (!isValidEmail(register.getEmail())) {
@@ -55,7 +61,14 @@ public class UserService {
                 .userName(register.getUserName())
                 .userRole(User.Role.USER)
                 .build();
-        userRepository.save(user);
+
+        User savedUser = userRepository.save(user);
+
+        Cart cart = Cart.builder()
+                .userId(savedUser)
+                .region("서울")
+                .build();
+        cartRepository.save(cart);
     }
 
     // 2️⃣ 로그인 로직

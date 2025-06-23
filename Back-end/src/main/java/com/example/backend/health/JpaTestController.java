@@ -124,6 +124,33 @@ public class JpaTestController {
         }
     }
 
+    @GetMapping("/sql-test")
+    @Operation(summary = "SQL 실행 테스트", description = "간단한 SQL 쿼리를 실행하여 JPA 동작을 테스트합니다")
+    public ResponseEntity<Map<String, Object>> testSqlExecution() {
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            // 현재 시간 조회 (별칭 수정)
+            Query timeQuery = entityManager.createNativeQuery("SELECT NOW() as current_datetime, 'JPA SQL Test' as test_message");
+            Object[] result = (Object[]) timeQuery.getSingleResult();
+
+            // 간단한 계산
+            Query mathQuery = entityManager.createNativeQuery("SELECT 1+1 as calculation");
+            Object mathResult = mathQuery.getSingleResult();
+
+            response.put("currentTime", result[0]);
+            response.put("testMessage", result[1]);
+            response.put("calculation", mathResult);
+            response.put("message", "SQL 실행 테스트 성공");
+            response.put("timestamp", System.currentTimeMillis());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.put("message", "SQL 실행 테스트 실패: " + e.getMessage());
+            response.put("timestamp", System.currentTimeMillis());
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
     @PostMapping("/test-transaction")
     @Operation(summary = "트랜잭션 테스트", description = "JPA 트랜잭션이 올바르게 작동하는지 테스트합니다")
     public ResponseEntity<Map<String, Object>> testTransaction() {
@@ -188,33 +215,6 @@ public class JpaTestController {
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             response.put("message", "엔티티 메타데이터 조회 실패: " + e.getMessage());
-            response.put("timestamp", System.currentTimeMillis());
-            return ResponseEntity.status(500).body(response);
-        }
-    }
-
-    @GetMapping("/sql-test")
-    @Operation(summary = "SQL 실행 테스트", description = "간단한 SQL 쿼리를 실행하여 JPA 동작을 테스트합니다")
-    public ResponseEntity<Map<String, Object>> testSqlExecution() {
-        Map<String, Object> response = new HashMap<>();
-
-        try {
-            // 현재 시간 조회
-            Query timeQuery = entityManager.createNativeQuery("SELECT NOW() as current_time, 'JPA SQL Test' as message");
-            Object[] result = (Object[]) timeQuery.getSingleResult();
-
-            // 간단한 계산
-            Query mathQuery = entityManager.createNativeQuery("SELECT 1+1 as calculation");
-            Object mathResult = mathQuery.getSingleResult();
-
-            response.put("currentTime", result[0]);
-            response.put("testMessage", result[1]);
-            response.put("calculation", mathResult);
-            response.put("message", "SQL 실행 테스트 성공");
-            response.put("timestamp", System.currentTimeMillis());
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            response.put("message", "SQL 실행 테스트 실패: " + e.getMessage());
             response.put("timestamp", System.currentTimeMillis());
             return ResponseEntity.status(500).body(response);
         }

@@ -40,7 +40,6 @@ dependencies {
     // Lombok
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
-
     // MySQL
     runtimeOnly 'com.mysql:mysql-connector-j'
 

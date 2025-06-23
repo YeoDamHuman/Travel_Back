@@ -1,11 +1,12 @@
 package com.example.backend.tour.entity;
 
-
 import com.example.backend.cart.entity.Cart;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.GenericGenerator;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 @Entity
 @Table(name = "tour")
@@ -16,9 +17,10 @@ import java.math.BigDecimal;
 public class Tour {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "tour_id")
-    private Integer tourId;
+    @GeneratedValue(generator = "uuid2")
+    @GenericGenerator(name = "uuid2", strategy = "uuid2")
+    @Column(name = "tour_id", columnDefinition = "VARCHAR(36)")
+    private UUID tourId;
 
     @Column(name = "longitude", precision = 10, scale = 7, nullable = false)
     private BigDecimal longitude;
@@ -36,6 +38,6 @@ public class Tour {
     private String tema;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "cart_id", nullable = false)
+    @JoinColumn(name = "cart_id", referencedColumnName = "cart_id")
     private Cart cartId;
 }
