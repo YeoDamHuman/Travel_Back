@@ -9,11 +9,14 @@ import com.example.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
@@ -23,6 +26,15 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JWTGenerator jwtGenerator;
+
+    // ✅ UserId 구하기
+    private UUID getCurrentUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new IllegalStateException("인증되지 않은 사용자입니다.");
+        }
+        return UUID.fromString(authentication.getName());
+    }
 
     // ✅ 로그인 실패 기록
     private final Map<String, LoginAttempt> loginFailures = new ConcurrentHashMap<>();
@@ -62,7 +74,48 @@ public class UserService {
         userRepository.save(user);
     }
 
-    // 2️⃣ 로그인 로직
+    // 2️⃣ 유저정보 변경 로직
+    @Transactional
+    public UserResponse.updateResponse update(UserRequest.updateRequest updateRequest) {
+        User user = userRepository.findById(getCurrentUserId())
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+        if (updateRequest.getEmail() != null) {
+            if (!isValidEmail(updateRequest.getEmail())) {
+                throw new IllegalArgumentException("유효하지 않은 이메일 형식입니다.");
+            }
+            if (userRepository.existsByEmailAndUserIdNot(updateRequest.getEmail(), user.getUserId())) {
+                throw new IllegalArgumentException("이미 등록된 이메일입니다.");
+            }
+        }
+
+        user.updateUserInfo(
+                updateRequest.getEmail(),
+                updateRequest.getPassword(),
+                updateRequest.getUserName(),
+                updateRequest.getUserNickname(),
+                updateRequest.getUserProfileImage(),
+                passwordEncoder
+        );
+
+        return UserResponse.updateResponse.builder()
+                .email(user.getEmail())
+                .userName(user.getUserName())
+                .userNickname(user.getUserNickname())
+                .userProfileImage(user.getUserProfileImage())
+                .build();
+    }
+    // 3️⃣ 유저 삭제 로직
+    @Transactional
+    public void delete() {
+        UUID userId = getCurrentUserId();
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+        userRepository.delete(user);
+    }
+    // 4️⃣ 로그인 로직
     public UserResponse.loginResponse login(UserRequest.loginRequest login) {
         String email = login.getEmail();
 

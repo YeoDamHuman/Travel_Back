@@ -6,6 +6,7 @@ import com.example.backend.file.dto.response.FileResponse;
 import com.example.backend.file.service.CloudinaryUploader;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/file")
+@Tag(name = "FileAPI", description = "File관련 데이터 불러오는 API")
 public class FileController {
 
     private final CloudinaryUploader uploader;

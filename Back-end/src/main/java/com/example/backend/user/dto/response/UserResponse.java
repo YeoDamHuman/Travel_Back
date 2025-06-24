@@ -19,4 +19,18 @@ public class UserResponse {
         @Schema(description = "사용자 프로필 이미지 URL", example = "https://example.com/profile.png")
         private String userProfileImage;
     }
+
+    @Getter
+    @Builder
+    @AllArgsConstructor
+    public static class updateResponse {
+        @Schema(description = "변경된 이메일", example = "newemail@example.com")
+        private String email;
+        @Schema(description = "변경된 유저 이름", example = "김코딩")
+        private String userName;
+        @Schema(description = "변경된 닉네임", example = "자바의 신")
+        private String userNickname;
+        @Schema(description = "변경된 프로필 이미지 URL", example = "https://example.com/images/profile/abcd.jpg")
+        private String userProfileImage;
+    }
 }
