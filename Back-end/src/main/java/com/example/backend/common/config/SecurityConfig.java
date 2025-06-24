@@ -40,7 +40,8 @@ public class SecurityConfig {
                                 "/user/login",
                                 "/mail/send",
                                 "/mail/verify",
-                                "/health/**"
+                                "/health/**",
+                                "/file/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

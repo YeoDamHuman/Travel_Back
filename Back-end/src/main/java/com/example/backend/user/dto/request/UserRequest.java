@@ -1,5 +1,6 @@
 package com.example.backend.user.dto.request;
 
+import com.example.backend.file.entity.File;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -29,5 +30,7 @@ public class UserRequest {
         private String password;
         @Schema(description = "사용자 닉네임", example = "광진구 총잡이 김재균")
         private String userNickname;
+        @Schema(description = "프로필 이미지 URL", example = "https://example.com/images/profile/asgjklasjdg.jpg")
+        private String userProfileImage;
     }
 }

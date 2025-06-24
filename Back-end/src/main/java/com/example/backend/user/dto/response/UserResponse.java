@@ -1,5 +1,6 @@
 package com.example.backend.user.dto.response;
 
+import com.example.backend.jwt.dto.JwtDto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -10,8 +11,12 @@ public class UserResponse {
     @Getter
     @Builder
     @AllArgsConstructor
-    @Schema(description = "응답 메시지", example = "회원가입이 완료되었습니다.")
-    public static class registerResponse {
-        private String message;
+    public static class loginResponse {
+        @Schema(description = "JWT 토큰 정보")
+        private JwtDto jwtDto;
+        @Schema(description = "사용자 닉네임", example = "광진구 총잡이 김재균")
+        private String userNickname;
+        @Schema(description = "사용자 프로필 이미지 URL", example = "https://example.com/profile.png")
+        private String userProfileImage;
     }
 }

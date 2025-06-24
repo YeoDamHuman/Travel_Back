@@ -3,6 +3,7 @@ package com.example.backend.user.service;
 import com.example.backend.jwt.config.JWTGenerator;
 import com.example.backend.jwt.dto.JwtDto;
 import com.example.backend.user.dto.request.UserRequest;
+import com.example.backend.user.dto.response.UserResponse;
 import com.example.backend.user.entity.User;
 import com.example.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -56,12 +57,13 @@ public class UserService {
                 .userNickname(register.getUserNickname())
                 .userName(register.getUserName())
                 .userRole(User.Role.USER)
+                .userProfileImage(register.getUserProfileImage()) // ✅ 이미지 URL 직접 저장
                 .build();
         userRepository.save(user);
     }
 
     // 2️⃣ 로그인 로직
-    public JwtDto login(UserRequest.loginRequest login) {
+    public UserResponse.loginResponse login(UserRequest.loginRequest login) {
         String email = login.getEmail();
 
         if (isBlocked(email)) {
@@ -81,7 +83,14 @@ public class UserService {
 
         resetLoginFailures(email);
         log.info("로그인 성공 - 사용자 이메일 : {}", email);
-        return jwtGenerator.generateToken(user);
+
+        JwtDto jwtDto = jwtGenerator.generateToken(user);
+
+        return UserResponse.loginResponse.builder()
+                .jwtDto(jwtDto)
+                .userNickname(user.getUserNickname())
+                .userProfileImage(user.getUserProfileImage()) // ✅ 바로 반환
+                .build();
     }
 
     // ✅ 이메일 유효성 검사
@@ -111,7 +120,7 @@ public class UserService {
         long now = System.currentTimeMillis();
 
         if (now - attempt.lastAttemptTime > BLOCK_DURATION_MS) {
-            loginFailures.remove(email); // 차단 해제
+            loginFailures.remove(email);
             return false;
         }
 
