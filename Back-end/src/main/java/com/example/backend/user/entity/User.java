@@ -3,6 +3,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -31,6 +33,9 @@ public class User {
     @Column(name = "user_nickname", length = 40, nullable = false)
     private String userNickname;
 
+    @Column(name = "user_profile_Image", length = 1000, nullable = true)
+    private String userProfileImage;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -46,6 +51,28 @@ public class User {
     public enum Role {
         USER,
         ADMIN
+    }
+
+    public void updateUserInfo(String email, String rawPassword, String userName, String userNickname, String userProfileImage, PasswordEncoder passwordEncoder) {
+        if (email != null) {
+            this.email = email;
+        }
+
+        if (rawPassword != null) {
+            this.password = passwordEncoder.encode(rawPassword);
+        }
+
+        if (userName != null) {
+            this.userName = userName;
+        }
+
+        if (userNickname != null) {
+            this.userNickname = userNickname;
+        }
+
+        if (userProfileImage != null) {
+            this.userProfileImage = userProfileImage;
+        }
     }
 }
 
