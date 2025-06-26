@@ -1,6 +1,7 @@
 package com.example.backend.user.dto.response;
 
 import com.example.backend.jwt.dto.JwtDto;
+import com.example.backend.user.entity.User;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,6 +19,8 @@ public class UserResponse {
         private String userNickname;
         @Schema(description = "사용자 프로필 이미지 URL", example = "https://example.com/profile.png")
         private String userProfileImage;
+        @Schema(description = "권한", example = "USER")
+        private User.Role userRole;
     }
 
     @Getter
