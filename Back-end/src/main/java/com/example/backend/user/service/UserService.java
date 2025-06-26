@@ -1,5 +1,7 @@
 package com.example.backend.user.service;
 
+import com.example.backend.cart.entity.Cart;
+import com.example.backend.cart.repository.CartRepository;
 import com.example.backend.jwt.config.JWTGenerator;
 import com.example.backend.jwt.dto.JwtDto;
 import com.example.backend.user.dto.request.UserRequest;
@@ -9,8 +11,12 @@ import com.example.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+<<<<<<< main
+import org.springframework.beans.factory.annotation.Autowired;
+=======
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+>>>>>>> develop
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,6 +57,9 @@ public class UserService {
         }
     }
 
+    @Autowired
+    private CartRepository cartRepository;
+
     // 1️⃣ 회원가입 로직
     @Transactional
     public void register(UserRequest.registerRequest register) {
@@ -70,7 +79,14 @@ public class UserService {
                 .userRole(User.Role.USER)
                 .userProfileImage(register.getUserProfileImage()) // ✅ 이미지 URL 직접 저장
                 .build();
-        userRepository.save(user);
+
+        User savedUser = userRepository.save(user);
+
+        Cart cart = Cart.builder()
+                .userId(savedUser)
+                .region("서울")
+                .build();
+        cartRepository.save(cart);
     }
 
     // 2️⃣ 유저정보 변경 로직

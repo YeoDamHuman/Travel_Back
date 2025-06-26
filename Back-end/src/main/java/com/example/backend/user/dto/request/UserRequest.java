@@ -1,7 +1,8 @@
 package com.example.backend.user.dto.request;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -9,25 +10,50 @@ public class UserRequest {
 
     @Getter
     @Builder
-    @AllArgsConstructor
     public static class loginRequest {
         @Schema(description = "사용자 이메일", example = "test@test.com")
-        private String email;
+        private final String email;
+
         @Schema(description = "사용자 비밀번호", example = "test1234")
-        private String password;
+        private final String password;
+
+        @JsonCreator
+        public loginRequest(
+                @JsonProperty("email") String email,
+                @JsonProperty("password") String password) {
+            this.email = email;
+            this.password = password;
+        }
     }
 
     @Getter
     @Builder
-    @AllArgsConstructor
     public static class registerRequest {
         @Schema(description = "유저 이름", example = "김재균")
-        private String userName;
+        private final String userName;
+
         @Schema(description = "사용자 이메일", example = "test@test.com")
-        private String email;
+        private final String email;
+
         @Schema(description = "사용자 비밀번호", example = "test1234")
-        private String password;
+        private final String password;
+
         @Schema(description = "사용자 닉네임", example = "광진구 총잡이 김재균")
+<<<<<<< main
+        private final String userNickname;
+
+        @JsonCreator
+        public registerRequest(
+                @JsonProperty("userName") String userName,
+                @JsonProperty("email") String email,
+                @JsonProperty("password") String password,
+                @JsonProperty("userNickname") String userNickname) {
+            this.userName = userName;
+            this.email = email;
+            this.password = password;
+            this.userNickname = userNickname;
+        }
+=======
         private String userNickname;
         @Schema(description = "프로필 이미지 URL", example = "https://example.com/images/profile/asgjklasjdg.jpg")
         private String userProfileImage;
@@ -47,5 +73,6 @@ public class UserRequest {
         private String userNickname;
         @Schema(description = "변경할 프로필 이미지 URL", example = "https://example.com/images/profile/abcd.jpg", nullable = true)
         private String userProfileImage;
+>>>>>>> develop
     }
 }
