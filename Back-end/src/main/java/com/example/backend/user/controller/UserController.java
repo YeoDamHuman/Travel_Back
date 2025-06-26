@@ -1,6 +1,5 @@
 package com.example.backend.user.controller;
 
-import com.example.backend.jwt.dto.JwtDto;
 import com.example.backend.user.dto.request.UserRequest;
 import com.example.backend.user.dto.response.UserResponse;
 import com.example.backend.user.service.UserService;
@@ -9,8 +8,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
