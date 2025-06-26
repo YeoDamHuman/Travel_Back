@@ -115,7 +115,22 @@ public class UserService {
 
         userRepository.delete(user);
     }
-    // 4️⃣ 로그인 로직
+
+    // 4️⃣ 유저 정보 조회
+    @Transactional
+    public UserResponse.InformationResponse Info(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+        return UserResponse.InformationResponse.builder()
+                .email(user.getEmail())
+                .userNickname(user.getUserNickname())
+                .userName(user.getUserName())
+                .userProfileImage(user.getUserProfileImage())
+                .build();
+    }
+    // 5️⃣ 로그인 로직
+    @Transactional
     public UserResponse.loginResponse login(UserRequest.loginRequest login) {
         String email = login.getEmail();
 

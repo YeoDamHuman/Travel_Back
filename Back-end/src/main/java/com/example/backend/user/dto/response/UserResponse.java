@@ -36,4 +36,18 @@ public class UserResponse {
         @Schema(description = "변경된 프로필 이미지 URL", example = "https://example.com/images/profile/abcd.jpg")
         private String userProfileImage;
     }
+
+    @Getter
+    @Builder
+    @AllArgsConstructor
+    public static class InformationResponse {
+        @Schema(description = "이메일", example = "test1234@test.com")
+        private String email;
+        @Schema(description = "이름", example = "김재균")
+        private String userName;
+        @Schema(description = "닉네임", example = "망원동 황족 제드")
+        private String userNickname;
+        @Schema(description = "프로필 이미지 URL", example = "https://example.com/images/profile/abcd.jpg")
+        private String userProfileImage;
+    }
 }
