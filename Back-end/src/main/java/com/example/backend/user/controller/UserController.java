@@ -41,12 +41,13 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/{userId}")
-    @Operation(summary = "유저 정보 조회", description = "유저의 상세 정보를 가져오는 API")
-    public ResponseEntity<UserResponse.InformationResponse> Info(@PathVariable UUID userId) {
-        UserResponse.InformationResponse response = userService.Info(userId);
+    @GetMapping("/me")
+    @Operation(summary = "내 정보 조회", description = "JWT 토큰 기반으로 현재 로그인한 유저 정보 반환")
+    public ResponseEntity<UserResponse.InformationResponse> myinfo() {
+        UserResponse.InformationResponse response = userService.myInfo();
         return ResponseEntity.ok(response);
     }
+
 
     @PostMapping("/login")
     @Operation(summary = "기본 유저 로그인", description = "카카오톡 로그인이 아닌 로컬 로그인 API")

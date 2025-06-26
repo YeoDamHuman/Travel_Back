@@ -39,9 +39,8 @@ public class UserService {
     // ✅ 로그인 실패 기록
     private final Map<String, LoginAttempt> loginFailures = new ConcurrentHashMap<>();
     private static final int MAX_ATTEMPTS = 5;
-    private static final long BLOCK_DURATION_MS = 5 * 60 * 1000; // 5분
+    private static final long BLOCK_DURATION_MS = 5 * 60 * 1000;
 
-    // ✅ 로그인 실패 횟수 및 마지막 로그인 시도 시간
     private static class LoginAttempt {
         int count;
         long lastAttemptTime;
@@ -105,30 +104,30 @@ public class UserService {
                 .userProfileImage(user.getUserProfileImage())
                 .build();
     }
+
     // 3️⃣ 유저 삭제 로직
     @Transactional
     public void delete() {
-        UUID userId = getCurrentUserId();
-
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
-
-        userRepository.delete(user);
+        userRepository.delete(
+                userRepository.findById(getCurrentUserId())
+                        .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."))
+        );
     }
 
     // 4️⃣ 유저 정보 조회
     @Transactional
-    public UserResponse.InformationResponse Info(UUID userId) {
-        User user = userRepository.findById(userId)
+    public UserResponse.InformationResponse myInfo() {
+        User user = userRepository.findById(getCurrentUserId())
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
         return UserResponse.InformationResponse.builder()
                 .email(user.getEmail())
-                .userNickname(user.getUserNickname())
                 .userName(user.getUserName())
+                .userNickname(user.getUserNickname())
                 .userProfileImage(user.getUserProfileImage())
                 .build();
     }
+
     // 5️⃣ 로그인 로직
     @Transactional
     public UserResponse.loginResponse login(UserRequest.loginRequest login) {
@@ -162,13 +161,11 @@ public class UserService {
                 .build();
     }
 
-    // ✅ 이메일 유효성 검사
     private boolean isValidEmail(String email) {
         String emailRegex = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$";
         return email != null && email.matches(emailRegex);
     }
 
-    // ✅ 로그인 실패 기록
     private void recordLoginFailure(String email) {
         LoginAttempt attempt = loginFailures.getOrDefault(email, new LoginAttempt(0, System.currentTimeMillis()));
         attempt.count++;
@@ -176,12 +173,10 @@ public class UserService {
         loginFailures.put(email, attempt);
     }
 
-    // ✅ 로그인 성공 시 실패 기록 초기화
     private void resetLoginFailures(String email) {
         loginFailures.remove(email);
     }
 
-    // ✅ 차단 여부 확인 (차단 시간 경과 시 자동 해제)
     private boolean isBlocked(String email) {
         LoginAttempt attempt = loginFailures.get(email);
         if (attempt == null) return false;
