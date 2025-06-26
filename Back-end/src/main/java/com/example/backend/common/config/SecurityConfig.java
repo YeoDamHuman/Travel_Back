@@ -41,7 +41,8 @@ public class SecurityConfig {
                                 "/mail/send",
                                 "/mail/verify",
                                 "/health/**",
-                                "/file/**"
+                                "/file/**",
+                                "/auth/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
