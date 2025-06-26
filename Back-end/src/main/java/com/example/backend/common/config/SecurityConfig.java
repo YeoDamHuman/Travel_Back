@@ -47,9 +47,14 @@ public class SecurityConfig {
                                 "/mail/send",
                                 "/mail/verify",
                                 "/health/**",
+<<<<<<< main
 
                                 // 투어 검색은 인증 없이 가능
                                 "/tour/search"
+=======
+                                "/file/**",
+                                "/auth/**"
+>>>>>>> develop
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

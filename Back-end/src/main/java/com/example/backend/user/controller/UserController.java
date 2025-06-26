@@ -10,6 +10,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.UUID;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/user")
@@ -20,34 +22,38 @@ public class UserController {
 
     @PostMapping("/register")
     @Operation(summary = "기본 유저 회원가입", description = "로컬 회원가입 API")
-    public ResponseEntity<UserResponse.registerResponse> register(@RequestBody UserRequest.registerRequest request) {
-        try {
-//            UUID uuid = userService.register(request);  // 이제 UUID 반환한다고 가정
-            userService.register(request);
-            UserResponse.registerResponse response = UserResponse.registerResponse.builder()
-                    .message("회원가입이 완료되었습니다.")
-                    .build();
-            return ResponseEntity.ok(response);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest()
-                    .body(UserResponse.registerResponse
-                            .builder()
-                            .message(e.getMessage())
-                            .build());
-        }
+    public ResponseEntity<Void> register(@RequestBody UserRequest.registerRequest request) {
+        userService.register(request);
+        return ResponseEntity.status(201).build(); // 201 Created
     }
+
+    @PutMapping("/update")
+    @Operation(summary = "유저 정보 수정", description = "로컬 유저 정보 수정 API")
+    public ResponseEntity<UserResponse.updateResponse> update(@RequestBody UserRequest.updateRequest request) {
+        UserResponse.updateResponse response = userService.update(request);
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/delete")
+    @Operation(summary = "유저 삭제", description = "로컬 유저 정보 수정 API")
+    public ResponseEntity<Void> delete() {
+        userService.delete();
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/me")
+    @Operation(summary = "내 정보 조회", description = "JWT 토큰 기반으로 현재 로그인한 유저 정보 반환")
+    public ResponseEntity<UserResponse.InformationResponse> myinfo() {
+        UserResponse.InformationResponse response = userService.myInfo();
+        return ResponseEntity.ok(response);
+    }
+
 
     @PostMapping("/login")
     @Operation(summary = "기본 유저 로그인", description = "카카오톡 로그인이 아닌 로컬 로그인 API")
-    public ResponseEntity<JwtDto> login(@RequestBody UserRequest.loginRequest login) {
-        try {
-            JwtDto jwtDto = userService.login(login);  // 토큰 생성된 JwtDto 받음
-            return ResponseEntity.ok(jwtDto);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
-        }
+    public ResponseEntity<UserResponse.loginResponse> login(@RequestBody UserRequest.loginRequest login) {
+        UserResponse.loginResponse response = userService.login(login);
+        return ResponseEntity.ok(response);
     }
-
-
 
 }

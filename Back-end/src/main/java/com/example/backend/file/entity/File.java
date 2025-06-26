@@ -21,7 +21,7 @@ public class File {
     @Column(name = "file_id", columnDefinition = "BINARY(16)")
     private UUID fileId;
 
-    @Column(name = "file_name", nullable = false, length = 50)
+    @Column(name = "file_name", nullable = true, length = 50)
     private String fileName;
 
     @Column(name = "file_url", nullable = true, length = 1000)
