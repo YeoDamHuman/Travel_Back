@@ -143,6 +143,7 @@ public class UserService {
                 .jwtDto(jwtDto)
                 .userNickname(user.getUserNickname())
                 .userProfileImage(user.getUserProfileImage()) // ✅ 바로 반환
+                .userRole(user.getUserRole())
                 .build();
     }
 
