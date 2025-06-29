@@ -53,15 +53,11 @@ public class User {
         ADMIN
     }
 
-    public void updateUserInfo(String email, String rawPassword, String userName, String userNickname, String userProfileImage, PasswordEncoder passwordEncoder) {
+    // ✅ 기타 필드 업데이트 메서드
+    public void updateUserInfo(String email, String userName, String userNickname, String userProfileImage) {
         if (email != null) {
             this.email = email;
         }
-
-        if (rawPassword != null) {
-            this.password = passwordEncoder.encode(rawPassword);
-        }
-
         if (userName != null) {
             this.userName = userName;
         }
@@ -73,6 +69,11 @@ public class User {
         if (userProfileImage != null) {
             this.userProfileImage = userProfileImage;
         }
+    }
+
+    // ✅ 비밀번호만 변경하는 메서드
+    public void setPassword(String password) {
+        this.password = password;
     }
 }
 

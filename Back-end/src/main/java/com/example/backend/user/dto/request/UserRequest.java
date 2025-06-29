@@ -39,13 +39,21 @@ public class UserRequest {
     public static class updateRequest {
         @Schema(description = "변경할 이메일", example = "newemail@example.com", nullable = true)
         private String email;
-        @Schema(description = "변경할 비밀번호", example = "newpassword1234", nullable = true)
-        private String password;
         @Schema(description = "변경할 유저 이름", example = "김코딩", nullable = true)
         private String userName;
         @Schema(description = "변경할 닉네임", example = "자바의 신", nullable = true)
         private String userNickname;
         @Schema(description = "변경할 프로필 이미지 URL", example = "https://example.com/images/profile/abcd.jpg", nullable = true)
         private String userProfileImage;
+    }
+
+    @Getter
+    @Builder
+    @AllArgsConstructor
+    public static class passwordResetRequest {
+        @Schema(description = "이메일", example = "newemail@example.com", nullable = true)
+        private String email;
+        @Schema(description = "변경할 비밀번호", example = "newpassword1234", nullable = true)
+        private String password;
     }
 }

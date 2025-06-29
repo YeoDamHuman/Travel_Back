@@ -59,22 +59,22 @@ public class UserService {
 
     // 1️⃣ 회원가입 로직
     @Transactional
-    public void register(UserRequest.registerRequest register) {
-        if (!isValidEmail(register.getEmail())) {
+    public void register(UserRequest.registerRequest request) {
+        if (!isValidEmail(request.getEmail())) {
             throw new IllegalArgumentException("유효하지 않은 이메일 형식입니다.");
-        } else if (userRepository.existsByEmail(register.getEmail())) {
+        } else if (userRepository.existsByEmail(request.getEmail())) {
             throw new IllegalArgumentException("이미 등록된 이메일입니다.");
         }
 
-        String encodedPassword = passwordEncoder.encode(register.getPassword());
+        String encodedPassword = passwordEncoder.encode(request.getPassword());
 
         User user = User.builder()
-                .email(register.getEmail())
+                .email(request.getEmail())
                 .password(encodedPassword)
-                .userNickname(register.getUserNickname())
-                .userName(register.getUserName())
+                .userNickname(request.getUserNickname())
+                .userName(request.getUserName())
                 .userRole(User.Role.USER)
-                .userProfileImage(register.getUserProfileImage()) // ✅ 이미지 URL 직접 저장
+                .userProfileImage(request.getUserProfileImage()) // ✅ 이미지 URL 직접 저장
                 .build();
 
         User savedUser = userRepository.save(user);
@@ -88,26 +88,24 @@ public class UserService {
 
     // 2️⃣ 유저정보 변경 로직
     @Transactional
-    public UserResponse.updateResponse update(UserRequest.updateRequest updateRequest) {
+    public UserResponse.updateResponse update(UserRequest.updateRequest request) {
         User user = userRepository.findById(getCurrentUserId())
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
-        if (updateRequest.getEmail() != null) {
-            if (!isValidEmail(updateRequest.getEmail())) {
+        if (request.getEmail() != null) {
+            if (!isValidEmail(request.getEmail())) {
                 throw new IllegalArgumentException("유효하지 않은 이메일 형식입니다.");
             }
-            if (userRepository.existsByEmailAndUserIdNot(updateRequest.getEmail(), user.getUserId())) {
+            if (userRepository.existsByEmailAndUserIdNot(request.getEmail(), user.getUserId())) {
                 throw new IllegalArgumentException("이미 등록된 이메일입니다.");
             }
         }
 
         user.updateUserInfo(
-                updateRequest.getEmail(),
-                updateRequest.getPassword(),
-                updateRequest.getUserName(),
-                updateRequest.getUserNickname(),
-                updateRequest.getUserProfileImage(),
-                passwordEncoder
+                request.getEmail(),
+                request.getUserName(),
+                request.getUserNickname(),
+                request.getUserProfileImage()
         );
 
         return UserResponse.updateResponse.builder()
@@ -143,8 +141,8 @@ public class UserService {
 
     // 5️⃣ 로그인 로직
     @Transactional
-    public UserResponse.loginResponse login(UserRequest.loginRequest login) {
-        String email = login.getEmail();
+    public UserResponse.loginResponse login(UserRequest.loginRequest request) {
+        String email = request.getEmail();
 
         if (isBlocked(email)) {
             throw new IllegalArgumentException("로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.");
@@ -156,7 +154,7 @@ public class UserService {
                     return new IllegalArgumentException("이메일이 존재하지 않습니다.");
                 });
 
-        if (!passwordEncoder.matches(login.getPassword(), user.getPassword())) {
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             recordLoginFailure(email);
             throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
         }
@@ -172,6 +170,17 @@ public class UserService {
                 .userProfileImage(user.getUserProfileImage()) // ✅ 바로 반환
                 .userRole(user.getUserRole())
                 .build();
+    }
+
+    // 6️⃣ 비밀번호 변경 로직
+    @Transactional
+    public void passwordReset(UserRequest.passwordResetRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new IllegalArgumentException("등록된 사용자가 없습니다."));
+
+        String encodedPassword = passwordEncoder.encode(request.getPassword());
+        user.setPassword(encodedPassword);
+        userRepository.save(user);
     }
 
     private boolean isValidEmail(String email) {

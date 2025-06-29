@@ -48,9 +48,16 @@ public class UserController {
 
     @PostMapping("/login")
     @Operation(summary = "기본 유저 로그인", description = "카카오톡 로그인이 아닌 로컬 로그인 API")
-    public ResponseEntity<UserResponse.loginResponse> login(@RequestBody UserRequest.loginRequest login) {
-        UserResponse.loginResponse response = userService.login(login);
+    public ResponseEntity<UserResponse.loginResponse> login(@RequestBody UserRequest.loginRequest request) {
+        UserResponse.loginResponse response = userService.login(request);
         return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/password")
+    @Operation(summary = "비밀번호 재설정", description = "이메일 인증 토큰을 사용해 새 비밀번호를 재설정하는 API")
+    public ResponseEntity<Void> passwordReset(@RequestBody UserRequest.passwordResetRequest request) {
+        userService.passwordReset(request);
+        return ResponseEntity.noContent().build();
     }
 
 }
