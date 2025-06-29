@@ -43,11 +43,6 @@ public class ScheduleItem {
     @JoinColumn(name = "schedule_id", nullable = false)
     private Schedule scheduleId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "tour_id", nullable = true)
-    private Tour tourId;
-
-
     public void updateScheduleItem(UUID placeId, Integer dayNumber, LocalTime startTime, LocalTime endTime, String memo, BigInteger cost) {
         this.placeId = placeId;
         this.dayNumber = dayNumber;
