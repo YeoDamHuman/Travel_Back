@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
@@ -36,6 +37,7 @@ public class Group {
     )
 
     @Builder.Default
-    private Set<User> users;
+    private Set<User> users = new HashSet<>();
+
 
 }
