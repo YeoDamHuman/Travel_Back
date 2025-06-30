@@ -33,11 +33,17 @@ public class UserService {
     public void register(UserRequest.registerRequest request) {
         if (!isValidEmail(request.getEmail())) {
             throw new IllegalArgumentException("유효하지 않은 이메일 형식입니다.");
-        } else if (userRepository.existsByEmail(request.getEmail())) {
+        }
+        if (userRepository.existsByEmail(request.getEmail())) {
             throw new IllegalArgumentException("이미 등록된 이메일입니다.");
         }
 
         String encodedPassword = passwordEncoder.encode(request.getPassword());
+
+        String defaultProfileImageUrl = "https://res.cloudinary.com/dwgnkkmau/image/upload/v1751262353/profile-images/cmjlq1hbb7dqklydlfvd.png";
+        String profileImageToSave = (request.getUserProfileImage() != null && !request.getUserProfileImage().isEmpty())
+                ? request.getUserProfileImage()
+                : defaultProfileImageUrl;
 
         User user = User.builder()
                 .email(request.getEmail())
@@ -45,7 +51,7 @@ public class UserService {
                 .userNickname(request.getUserNickname())
                 .userName(request.getUserName())
                 .userRole(User.Role.USER)
-                .userProfileImage(request.getUserProfileImage()) // ✅ 이미지 URL 직접 저장
+                .userProfileImage(profileImageToSave)
                 .build();
 
         User savedUser = userRepository.save(user);
