@@ -17,14 +17,9 @@ import java.util.UUID;
 public class Tour {
 
     @Id
-<<<<<<< main
-    @GeneratedValue(generator = "uuid2")
     @GenericGenerator(name = "uuid2", strategy = "uuid2")
-    @Column(name = "tour_id", columnDefinition = "VARCHAR(36)")
-=======
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "tour_id", columnDefinition = "BINARY(16)", nullable = false)
->>>>>>> develop
     private UUID tourId;
 
     @Column(name = "longitude", precision = 10, scale = 7, nullable = false)
@@ -45,9 +40,7 @@ public class Tour {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cart_id", referencedColumnName = "cart_id")
     private Cart cartId;
-<<<<<<< main
 }
-=======
 
-}
->>>>>>> develop
+
+
