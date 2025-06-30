@@ -42,10 +42,11 @@ public class CartController {
             security = @SecurityRequirement(name = "JWT"))
     public ResponseEntity<CartResponse.AddTourResponse> addTourToCart(
             @AuthenticationPrincipal UserDetails userDetails,
-            @RequestBody CartRequest.AddTourRequest request) {
-        CartResponse.AddTourResponse response = cartService.addTourToCart(userDetails.getUsername(), request);
+            @RequestBody CartResponse.TourSearchResponse tourResponse) {
+        CartResponse.AddTourResponse response = cartService.addTourToCart(userDetails.getUsername(), tourResponse);
         return ResponseEntity.ok(response);
     }
+
 
     @DeleteMapping("/cart/tours/{tourId}")
     @Operation(summary = "장바구니에서 투어 삭제",

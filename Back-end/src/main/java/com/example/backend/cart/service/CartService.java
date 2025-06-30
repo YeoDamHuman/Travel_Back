@@ -4,6 +4,7 @@ import com.example.backend.cart.dto.request.CartRequest;
 import com.example.backend.cart.dto.response.CartResponse;
 import com.example.backend.cart.entity.Cart;
 import com.example.backend.cart.repository.CartRepository;
+import com.example.backend.tour.dto.response.TourDetailResponse;
 import com.example.backend.tour.entity.Tour;
 import com.example.backend.tour.entity.TourCategory;
 import com.example.backend.tour.repository.TourRepository;
@@ -79,7 +80,7 @@ public class CartService {
     }
 
     @Transactional
-    public CartResponse.AddTourResponse addTourToCart(String userIdString, CartRequest.AddTourRequest request) {
+    public CartResponse.AddTourResponse addTourToCart(String userIdString, CartResponse.TourSearchResponse tourResponse) {
         UUID userId = UUID.fromString(userIdString);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
@@ -87,25 +88,51 @@ public class CartService {
         Cart cart = cartRepository.findByUserId(user)
                 .orElseGet(() -> createNewCart(user));
 
-        boolean isDuplicate = tourRepository.existsByCartIdAndAddress(cart, request.getAddress());
+        boolean isDuplicate = tourRepository.existsByCartIdAndAddress(cart, tourResponse.getAddress());
         if (isDuplicate) {
             throw new IllegalArgumentException("이미 장바구니에 추가된 투어입니다.");
         }
 
-        // BigDecimal을 Double로 변환
         Tour tour = Tour.builder()
-                .longitude(request.getLongitude() != null ? request.getLongitude().doubleValue() : null)
-                .latitude(request.getLatitude() != null ? request.getLatitude().doubleValue() : null)
-                .address(request.getAddress())
-                .image(request.getImage())
-                .tema(request.getTema())
+                .contentId(tourResponse.getContentId())
+                .contentTypeId(tourResponse.getContentTypeId())
+                .title(tourResponse.getTitle())
+                .address(tourResponse.getAddress())
+                .address2(tourResponse.getAddress2())
+                .zipcode(tourResponse.getZipcode())
+                .areaCode(tourResponse.getAreaCode())
+                .cat1(tourResponse.getCat1())
+                .cat2(tourResponse.getCat2())
+                .cat3(tourResponse.getCat3())
+                .createdTime(tourResponse.getCreatedTime())
+                .firstImage(tourResponse.getFirstImage())
+                .firstImage2(tourResponse.getFirstImage2())
+                .cpyrhtDivCd(tourResponse.getCpyrhtDivCd())
+                .mapX(tourResponse.getMapX())
+                .mapY(tourResponse.getMapY())
+                .mlevel(tourResponse.getMlevel())
+                .modifiedTime(tourResponse.getModifiedTime())
+                .sigunguCode(tourResponse.getSigunguCode())
+                .tel(tourResponse.getTel())
+                .overview("") // 현재 TourSearchResponse에는 overview가 없으므로 기본값
+                .lDongRegnCd(tourResponse.getLDongRegnCd())
+                .lDongSignguCd(tourResponse.getLDongSignguCd())
+                .lclsSystm1(tourResponse.getLclsSystm1())
+                .lclsSystm2(tourResponse.getLclsSystm2())
+                .lclsSystm3(tourResponse.getLclsSystm3())
+                .longitude(tourResponse.getMapX() != null && !tourResponse.getMapX().isEmpty()
+                        ? Double.valueOf(tourResponse.getMapX()) : null)
+                .latitude(tourResponse.getMapY() != null && !tourResponse.getMapY().isEmpty()
+                        ? Double.valueOf(tourResponse.getMapY()) : null)
+                .image(tourResponse.getFirstImage())
+                .tema("") // 필요에 따라 설정
                 .cartId(cart)
                 .build();
 
         Tour savedTour = tourRepository.save(tour);
 
         if (cart.getRegion() == null || cart.getRegion().isEmpty()) {
-            String region = extractRegionFromAddress(request.getAddress());
+            String region = extractRegionFromAddress(tourResponse.getAddress());
             cart = Cart.builder()
                     .cartId(cart.getCartId())
                     .region(region)
