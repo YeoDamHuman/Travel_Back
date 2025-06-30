@@ -1,5 +1,6 @@
 package com.example.backend.schedule.entity;
 
+import com.example.backend.cart.entity.Cart;
 import com.example.backend.group.entity.Group;
 import com.example.backend.schedule.dto.request.ScheduleRequest;
 import com.example.backend.user.entity.User;
@@ -57,6 +58,10 @@ public class Schedule {
     @Enumerated(EnumType.STRING)
     @Column(name = "schedule_type", nullable = false)
     private ScheduleType scheduleType;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cart_id", referencedColumnName = "cart_id", nullable = false)
+    private Cart cartId;
 
     public void updateSchedule(String name, LocalDate start, LocalDate end, BigInteger budget, Group group, ScheduleType type) {
         this.scheduleName = name;

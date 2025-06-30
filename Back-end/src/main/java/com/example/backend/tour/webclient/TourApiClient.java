@@ -12,6 +12,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.util.UriComponentsBuilder;
+import lombok.extern.slf4j.Slf4j;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -236,26 +237,38 @@ public class TourApiClient {
      */
     private CartResponse.TourSearchResponse createTourResponse(JsonNode item) {
         try {
+            log.info("item 전체 구조: {}", item.toPrettyString());
+
             return CartResponse.TourSearchResponse.builder()
                     .contentId(item.path("contentid").asText(""))
                     .contentTypeId(item.path("contenttypeid").asText(""))
                     .title(item.path("title").asText(""))
                     .address(item.path("addr1").asText(""))
                     .address2(item.path("addr2").asText(""))
+                    .zipcode(item.path("zipcode").asText(""))
                     .areaCode(item.path("areacode").asText(""))
-                    .sigunguCode(item.path("sigungucode").asText(""))
-                    .latitude(item.path("mapy").asDouble(0.0))
-                    .longitude(item.path("mapx").asDouble(0.0))
-                    .image(item.path("firstimage").asText(""))
-                    .thumbnail(item.path("firstimage2").asText(""))
-                    .tel(item.path("tel").asText(""))
+                    .cat1(item.path("cat1").asText(""))
+                    .cat2(item.path("cat2").asText(""))
+                    .cat3(item.path("cat3").asText(""))
                     .createdTime(item.path("createdtime").asText(""))
+                    .firstImage(item.path("firstimage").asText(""))
+                    .firstImage2(item.path("firstimage2").asText(""))
+                    .cpyrhtDivCd(item.path("cpyrhtDivCd").asText(""))
+                    .mapX(item.path("mapx").asText(""))
+                    .mapY(item.path("mapy").asText(""))
+                    .mlevel(item.path("mlevel").asText(""))
                     .modifiedTime(item.path("modifiedtime").asText(""))
-                    .tema(item.path("cat3").asText(""))
-                    .description("")  // overview는 상세조회에서만 제공
+                    .sigunguCode(item.path("sigungucode").asText(""))
+                    .tel(item.path("tel").asText(""))
+                    .overview("") // overview는 JSON에 없어서 기본값
+                    .lDongRegnCd(item.path("lDongRegnCd").asText(""))
+                    .lDongSignguCd(item.path("lDongSignguCd").asText(""))
+                    .lclsSystm1(item.path("lclsSystm1").asText(""))
+                    .lclsSystm2(item.path("lclsSystm2").asText(""))
+                    .lclsSystm3(item.path("lclsSystm3").asText(""))
                     .build();
         } catch (Exception e) {
-            log.error("TourResponse 생성 중 오류 발생: {}", e.getMessage(), e);
+            log.error("Tour 응답 객체 생성 오류", e);
             return null;
         }
     }
@@ -313,4 +326,5 @@ public class TourApiClient {
             throw new RuntimeException("TourAPI 연결 실패: " + e.getMessage(), e);
         }
     }
+    
 }
