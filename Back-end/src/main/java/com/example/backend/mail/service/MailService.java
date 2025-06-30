@@ -2,6 +2,7 @@ package com.example.backend.mail.service;
 
 import com.example.backend.mail.dto.request.MailRequest;
 import com.example.backend.mail.dto.response.MailResponse;
+import com.example.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,7 +20,8 @@ public class MailService {
 
     private final JavaMailSender mailSender;
     private final RedisTemplate<String, String> redisTemplate;
-    private final Logger log = LoggerFactory.getLogger(MailService.class);
+    private final UserRepository userRepository;
+
     // 1️⃣ 이메일 발송
     public MailResponse.mailSendResponse sendVerificationEmail(MailRequest.mailSendRequest email) {
         String token = UUID.randomUUID().toString();
@@ -53,5 +55,19 @@ public class MailService {
         return MailResponse.mailVerifyResponse.builder()
                 .message("유효하지 않은 토큰입니다.")
                 .build();
+    }
+
+    // 3️⃣ 이메일 중복 체크 메서드
+    public boolean isEmailAvailable(String email) {
+        if (!isValidEmail(email)) {
+            throw new IllegalArgumentException("유효하지 않은 이메일 형식입니다.");
+        }
+        return !userRepository.existsByEmail(email);
+    }
+
+    // 이메일 유효성 체크 메서드
+    private boolean isValidEmail(String email) {
+        String emailRegex = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$";
+        return email != null && email.matches(emailRegex);
     }
 }
