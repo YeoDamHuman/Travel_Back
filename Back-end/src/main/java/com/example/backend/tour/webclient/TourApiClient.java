@@ -12,6 +12,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.util.UriComponentsBuilder;
+import lombok.extern.slf4j.Slf4j;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -241,21 +242,18 @@ public class TourApiClient {
                     .contentTypeId(item.path("contenttypeid").asText(""))
                     .title(item.path("title").asText(""))
                     .address(item.path("addr1").asText(""))
-                    .address2(item.path("addr2").asText(""))
+                    // .address2 라인 삭제
+                    .firstImage(item.path("firstimage").asText(""))
+                    .firstImage2(item.path("firstimage2").asText(""))
+                    .mapX(item.path("mapx").asText(""))
+                    .mapY(item.path("mapy").asText(""))
                     .areaCode(item.path("areacode").asText(""))
                     .sigunguCode(item.path("sigungucode").asText(""))
-                    .latitude(item.path("mapy").asDouble(0.0))
-                    .longitude(item.path("mapx").asDouble(0.0))
-                    .image(item.path("firstimage").asText(""))
-                    .thumbnail(item.path("firstimage2").asText(""))
                     .tel(item.path("tel").asText(""))
-                    .createdTime(item.path("createdtime").asText(""))
-                    .modifiedTime(item.path("modifiedtime").asText(""))
-                    .tema(item.path("cat3").asText(""))
-                    .description("")  // overview는 상세조회에서만 제공
+                    .overview("")  // 목록 조회에서는 overview 없음
                     .build();
         } catch (Exception e) {
-            log.error("TourResponse 생성 중 오류 발생: {}", e.getMessage(), e);
+            log.error("Tour 응답 객체 생성 오류", e);
             return null;
         }
     }

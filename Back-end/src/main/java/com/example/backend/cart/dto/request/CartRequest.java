@@ -1,18 +1,14 @@
 package com.example.backend.cart.dto.request;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-
+import lombok.*;
 import java.math.BigDecimal;
 
 public class CartRequest {
 
     @Getter
+    @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    @Builder
     public static class AddTourRequest {
         private BigDecimal longitude;
         private BigDecimal latitude;
