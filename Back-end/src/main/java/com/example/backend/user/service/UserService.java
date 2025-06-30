@@ -33,7 +33,8 @@ public class UserService {
     public void register(UserRequest.registerRequest request) {
         if (!isValidEmail(request.getEmail())) {
             throw new IllegalArgumentException("유효하지 않은 이메일 형식입니다.");
-        } else if (userRepository.existsByEmail(request.getEmail())) {
+        }
+        if (userRepository.existsByEmail(request.getEmail())) {
             throw new IllegalArgumentException("이미 등록된 이메일입니다.");
         }
 
