@@ -31,13 +31,6 @@ public class UserService {
     // 1️⃣ 회원가입 로직
     @Transactional
     public void register(UserRequest.registerRequest request) {
-        if (!isValidEmail(request.getEmail())) {
-            throw new IllegalArgumentException("유효하지 않은 이메일 형식입니다.");
-        }
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new IllegalArgumentException("이미 등록된 이메일입니다.");
-        }
-
         String encodedPassword = passwordEncoder.encode(request.getPassword());
 
         String defaultProfileImageUrl = "https://res.cloudinary.com/dwgnkkmau/image/upload/v1751262353/profile-images/cmjlq1hbb7dqklydlfvd.png";
@@ -132,7 +125,6 @@ public class UserService {
             throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
         }
 
-        // ✅ 성공 시 기록 초기화
         userFilter.resetLoginFailures(email);
 
         log.info("로그인 성공 - 사용자 이메일 : {}", email);
