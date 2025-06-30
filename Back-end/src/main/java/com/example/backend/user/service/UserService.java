@@ -39,13 +39,18 @@ public class UserService {
 
         String encodedPassword = passwordEncoder.encode(request.getPassword());
 
+        String defaultProfileImageUrl = "https://res.cloudinary.com/dwgnkkmau/image/upload/v1751262353/profile-images/cmjlq1hbb7dqklydlfvd.png";
+        String profileImageToSave = (request.getUserProfileImage() != null && !request.getUserProfileImage().isEmpty())
+                ? request.getUserProfileImage()
+                : defaultProfileImageUrl;
+
         User user = User.builder()
                 .email(request.getEmail())
                 .password(encodedPassword)
                 .userNickname(request.getUserNickname())
                 .userName(request.getUserName())
                 .userRole(User.Role.USER)
-                .userProfileImage(request.getUserProfileImage()) // ✅ 이미지 URL 직접 저장
+                .userProfileImage(profileImageToSave)
                 .build();
 
         User savedUser = userRepository.save(user);
