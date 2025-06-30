@@ -44,8 +44,7 @@ public class SecurityConfig {
                                 // 인증 없이 접근 가능한 API
                                 "/user/register",
                                 "/user/login",
-                                "/mail/send",
-                                "/mail/verify",
+                                "/mail/**",
                                 "/health/**",
                                 // 투어 검색은 인증 없이 가능
                                 "/tour/search",
