@@ -5,6 +5,7 @@ import com.example.backend.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Entity
@@ -26,4 +27,10 @@ public class Cart {
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User userId;
+
+    @Column(name = "budget")
+    private BigDecimal budget;
+
+    @Column(name = "total_expense")
+    private BigDecimal totalExpense;
 }

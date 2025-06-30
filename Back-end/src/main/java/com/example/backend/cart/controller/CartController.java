@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -16,10 +17,13 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.UUID;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping
 @Tag(name = "CartAPI", description = "장바구니 및 투어 관리 API")
+@Slf4j
 public class CartController {
 
     private final CartService cartService;
@@ -41,6 +45,27 @@ public class CartController {
             @RequestBody CartRequest.AddTourRequest request) {
         CartResponse.AddTourResponse response = cartService.addTourToCart(userDetails.getUsername(), request);
         return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/cart/tours/{tourId}")
+    @Operation(summary = "장바구니에서 투어 삭제",
+            description = "장바구니에서 특정 투어 삭제",
+            security = @SecurityRequirement(name = "JWT"))
+    public ResponseEntity<Void> removeTourFromCart(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable UUID tourId) {
+        cartService.removeTourFromCart(userDetails.getUsername(), tourId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/cart/tours")
+    @Operation(summary = "장바구니 전체 비우기",
+            description = "장바구니의 모든 투어 삭제",
+            security = @SecurityRequirement(name = "JWT"))
+    public ResponseEntity<Void> clearCart(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        cartService.clearCart(userDetails.getUsername());
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/tour/search")
