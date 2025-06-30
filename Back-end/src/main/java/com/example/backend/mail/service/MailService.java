@@ -57,13 +57,15 @@ public class MailService {
                 .build();
     }
 
-    // 3️⃣ 이메일 중복 체크 메서드
+    // 3️⃣ 이메일 중복 체크 메서드 - ! 없이 의미 반대로
     public boolean isEmailAvailable(String email) {
         if (!isValidEmail(email)) {
             throw new IllegalArgumentException("유효하지 않은 이메일 형식입니다.");
         }
-        return !userRepository.existsByEmail(email);
+        // 존재하면 true 반환 => 사용 불가
+        return userRepository.existsByEmail(email);
     }
+
 
     // 이메일 유효성 체크 메서드
     private boolean isValidEmail(String email) {
