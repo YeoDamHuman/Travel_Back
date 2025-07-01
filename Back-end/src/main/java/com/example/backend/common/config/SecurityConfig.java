@@ -49,7 +49,8 @@ public class SecurityConfig {
                                 // 투어 검색은 인증 없이 가능
                                 "/tour/search",
                                 "/file/**",
-                                "/auth/**"
+                                "/auth/**",
+                                "/weather/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
