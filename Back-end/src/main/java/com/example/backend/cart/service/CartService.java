@@ -88,7 +88,7 @@ public class CartService {
         Cart cart = cartRepository.findByUserId(user)
                 .orElseGet(() -> createNewCart(user));
 
-        boolean isDuplicate = tourRepository.existsByCartIdAndAddress(cart, tourResponse.getAddress());
+        boolean isDuplicate = tourRepository.existsByCartIdAndContentId(cart, tourResponse.getContentId());
         if (isDuplicate) {
             throw new IllegalArgumentException("이미 장바구니에 추가된 투어입니다.");
         }
