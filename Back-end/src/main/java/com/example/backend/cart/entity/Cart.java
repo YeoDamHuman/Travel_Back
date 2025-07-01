@@ -33,4 +33,7 @@ public class Cart {
 
     @Column(name = "total_expense")
     private BigDecimal totalExpense;
+
+    @OneToMany(mappedBy = "cartId", cascade = CascadeType.ALL, orphanRemoval = true)
+    private java.util.List<com.example.backend.tour.entity.Tour> tours;
 }
