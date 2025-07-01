@@ -20,4 +20,6 @@ public interface TourRepository extends JpaRepository<Tour, UUID> {
     void deleteAllByCartId(Cart cart);
 
     int countByCartId(Cart cart);
+
+    boolean existsByCartIdAndContentId(Cart cart, String contentId);
 }
