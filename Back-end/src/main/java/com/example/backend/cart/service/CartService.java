@@ -17,6 +17,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.example.backend.common.exception.BusinessException;
 
 import java.util.List;
 import java.util.UUID;
@@ -90,7 +91,7 @@ public class CartService {
 
         boolean isDuplicate = tourRepository.existsByCartIdAndContentId(cart, tourResponse.getContentId());
         if (isDuplicate) {
-            throw new IllegalArgumentException("이미 장바구니에 추가된 투어입니다.");
+            throw new BusinessException("CART_DUPLICATE_TOUR", "이미 장바구니에 추가된 투어입니다.");
         }
 
         Tour tour = Tour.builder()
