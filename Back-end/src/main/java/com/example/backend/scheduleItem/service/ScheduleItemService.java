@@ -30,8 +30,7 @@ public class ScheduleItemService {
                 .startTime(item.getStartTime())
                 .endTime(item.getEndTime())
                 .memo(item.getMemo())
-                .cost(item.getCost())
-                .scheduleId(schedule)
+                .cost(item.getCost()).scheduleId(schedule)
                 .build();
         scheduleItemRepository.save(scheduleItem);
         return ScheduleItemResponse.scheduleItemCreateResponse.builder()
