@@ -1,5 +1,6 @@
 package com.example.backend.schedule.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.example.backend.group.entity.Group;
 import com.example.backend.group.repository.GroupRepository;
 import com.example.backend.schedule.dto.request.ScheduleRequest;
@@ -7,16 +8,24 @@ import com.example.backend.schedule.dto.response.ScheduleResponse;
 import com.example.backend.schedule.entity.Schedule;
 import com.example.backend.schedule.entity.ScheduleType;
 import com.example.backend.schedule.repository.ScheduleRepository;
+import com.example.backend.scheduleItem.entity.ScheduleItem;
+import com.example.backend.scheduleItem.repository.ScheduleItemRepository;
 import com.example.backend.user.entity.User;
 import com.example.backend.user.repository.UserRepository;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -26,8 +35,14 @@ public class ScheduleService {
     private final ScheduleRepository scheduleRepository;
     private final GroupRepository groupRepository;
     private final UserRepository userRepository;
+    private final ScheduleItemRepository scheduleItemRepository;
 
-    // ✅ UserId 구하기
+    @Value("${openai.api.key}")
+    private String openAiApiKey;
+
+    @Value("${openai.api.url}")
+    private String openAiApiUrl;
+
     private UUID getCurrentUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
@@ -36,7 +51,6 @@ public class ScheduleService {
         return UUID.fromString(authentication.getName());
     }
 
-    // 1️⃣ 스케쥴 생성
     @Transactional
     public UUID createSchedule(ScheduleRequest.scheduleCreateRequest request) {
         UUID currentUserId = getCurrentUserId();
@@ -78,7 +92,6 @@ public class ScheduleService {
         return savedSchedule.getScheduleId();
     }
 
-    // 2️⃣ 스케쥴 수정
     @Transactional
     public UUID updateSchedule(ScheduleRequest.scheduleUpdateRequest request) {
         UUID currentUserId = getCurrentUserId();
@@ -139,7 +152,6 @@ public class ScheduleService {
         return schedule.getScheduleId();
     }
 
-    // 3️⃣ 스케쥴 삭제
     @Transactional
     public void deleteSchedule(UUID scheduleId) {
         UUID currentUserId = getCurrentUserId();
@@ -169,8 +181,6 @@ public class ScheduleService {
         scheduleRepository.delete(schedule);
     }
 
-
-    // 4️⃣ 스케쥴 조회
     @Transactional
     public List<ScheduleResponse.scheduleInfo> getSchedules(UUID groupId) {
         UUID currentUserId = getCurrentUserId();
@@ -220,7 +230,6 @@ public class ScheduleService {
                 .collect(Collectors.toList());
     }
 
-    // 5️⃣ 스케쥴 상세 조회
     @Transactional
     public ScheduleResponse.scheduleDetailResponse getScheduleDetail(UUID scheduleId) {
         UUID currentUserId = getCurrentUserId();
@@ -246,6 +255,20 @@ public class ScheduleService {
             throw new IllegalArgumentException("알 수 없는 스케쥴 타입입니다.");
         }
 
+        List<ScheduleItem> scheduleItems = scheduleItemRepository.findAllByScheduleId(schedule);
+
+        List<ScheduleResponse.scheduleItemInfo> itemsDto = scheduleItems.stream()
+                .map(item -> ScheduleResponse.scheduleItemInfo.builder()
+                        .scheduleItemId(item.getScheduleItemId())
+                        .placeId(item.getPlaceId())
+                        .dayNumber(item.getDayNumber())
+                        .startTime(item.getStartTime())
+                        .endTime(item.getEndTime())
+                        .memo(item.getMemo())
+                        .cost(item.getCost())
+                        .build())
+                .collect(Collectors.toList());
+
         return ScheduleResponse.scheduleDetailResponse.builder()
                 .scheduleId(schedule.getScheduleId())
                 .scheduleName(schedule.getScheduleName())
@@ -254,6 +277,137 @@ public class ScheduleService {
                 .createdAt(schedule.getCreatedAt())
                 .updatedAt(schedule.getUpdatedAt())
                 .budget(schedule.getBudget())
+                .scheduleItems(itemsDto)
                 .build();
+    }
+
+    public Mono<ScheduleResponse.OptimizeRouteResponse> optimizeRoute(UUID scheduleId, ScheduleRequest.OptimizeRouteRequest request) {
+        Schedule schedule = scheduleRepository.findById(scheduleId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 스케쥴을 찾을 수 없습니다."));
+        List<ScheduleItem> scheduleItems = scheduleItemRepository.findAllByScheduleId(schedule);
+
+        if (scheduleItems.isEmpty()) {
+            throw new IllegalArgumentException("해당 스케줄에 아이템이 없습니다.");
+        }
+
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
+        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
+        List<ScheduleResponse.scheduleItemInfo> scheduleItemsDto = scheduleItems.stream()
+                .map(item -> ScheduleResponse.scheduleItemInfo.builder()
+                        .scheduleItemId(item.getScheduleItemId())
+                        .placeId(item.getPlaceId())
+                        .dayNumber(item.getDayNumber())
+                        .startTime(item.getStartTime())
+                        .endTime(item.getEndTime())
+                        .memo(item.getMemo())
+                        .cost(item.getCost())
+                        .build())
+                .collect(Collectors.toList());
+
+        String preferencesJson;
+        String itemsJson;
+
+        try {
+            preferencesJson = mapper.writeValueAsString(request.getPreferences());
+            itemsJson = mapper.writeValueAsString(scheduleItemsDto);
+        } catch (Exception e) {
+            throw new RuntimeException("JSON 직렬화 실패", e);
+        }
+
+        String prompt = String.format("""
+너는 여행 경로 최적화 전문가야.
+아래 정보를 참고해서 일정 아이템들을 효율적으로 순서를 정렬하고 최적 경로를 추천해.
+각 아이템이 어느 '몇일차(dayNumber)'에 속하는지도 출력해줘.
+
+📌 스케줄 ID: %s
+📌 최적화 타입: %s
+📌 선호사항: %s
+📌 현재 스케줄 아이템 리스트:
+%s
+
+아래 JSON 구조를 절대 변경하지 말고, 다른 필드는 절대 넣지 말고,
+정확하게 아래의 JSON 형식으로만 출력해줘:
+{
+  "scheduleId": "스케줄 ID",
+  "optimizeRoute": [
+    {
+      "order": 1,
+      "location": "장소 UUID",
+      "estimatedTimeMinutes": 30,
+      "distanceKm": 12.5,
+      "dayNumber": 1
+    }
+  ]
+}
+
+❗️ 절대 설명 문장 쓰지 말고 JSON만 출력해.
+""", scheduleId, request.getOptimizationType(), preferencesJson, itemsJson);
+
+        Map<String, Object> body = Map.of(
+                "model", "gpt-3.5-turbo",
+                "messages", List.of(
+                        Map.of("role", "user", "content", prompt)
+                )
+        );
+
+        return WebClient.builder()
+                .baseUrl(openAiApiUrl)
+                .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + openAiApiKey)
+                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .build()
+                .post()
+                .bodyValue(body)
+                .retrieve()
+                .bodyToMono(Map.class)
+                .map(response -> {
+                    List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
+                    if (choices != null && !choices.isEmpty()) {
+                        Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
+                        if (message != null) {
+                            String content = (String) message.get("content");
+                            System.out.println("GPT 응답: " + content);
+
+                            if (!content.trim().startsWith("{")) {
+                                throw new RuntimeException("GPT 응답이 JSON 형식이 아님: " + content);
+                            }
+
+                            try {
+                                ScheduleResponse.OptimizeRouteResponse result = mapper.readValue(content, ScheduleResponse.OptimizeRouteResponse.class);
+
+                                List<ScheduleItem> scheduleItemsFull = scheduleItemRepository.findAllByScheduleId(schedule);
+
+                                List<ScheduleResponse.RouteStep> enhancedRoute = new ArrayList<>();
+                                for (ScheduleResponse.RouteStep step : result.getOptimizeRoute()) {
+                                    Optional<ScheduleItem> matchingItem = scheduleItemsFull.stream()
+                                            .filter(item -> item.getPlaceId().toString().equals(step.getLocation()))
+                                            .findFirst();
+
+                                    Integer dayNumber = matchingItem.map(ScheduleItem::getDayNumber).orElse(null);
+
+                                    ScheduleResponse.RouteStep stepWithDay = ScheduleResponse.RouteStep.builder()
+                                            .order(step.getOrder())
+                                            .location(step.getLocation())
+                                            .estimatedTimeMinutes(step.getEstimatedTimeMinutes())
+                                            .distanceKm(step.getDistanceKm())
+                                            .dayNumber(dayNumber)
+                                            .build();
+
+                                    enhancedRoute.add(stepWithDay);
+                                }
+
+                                return ScheduleResponse.OptimizeRouteResponse.builder()
+                                        .scheduleId(result.getScheduleId())
+                                        .optimizeRoute(enhancedRoute)
+                                        .build();
+
+                            } catch (Exception e) {
+                                throw new RuntimeException("GPT 응답 JSON 파싱 실패: " + content, e);
+                            }
+                        }
+                    }
+                    throw new RuntimeException("OpenAI 응답에서 결과를 찾을 수 없습니다.");
+                });
     }
 }

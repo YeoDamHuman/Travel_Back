@@ -50,7 +50,8 @@ public class SecurityConfig {
                                 "/tour/search",
                                 "/file/**",
                                 "/auth/**",
-                                "/weather/**"
+                                "/weather/**",
+                                "/schedule/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
