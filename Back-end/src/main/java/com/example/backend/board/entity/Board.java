@@ -42,7 +42,36 @@ public class Board {
     @Column(name = "board_report", nullable = false)
     private int boardReport;
 
+    @Column(name = "tag", length = 200)
+    private String tag;
+
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User userId;
+
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
+
+    public void update(String title, String content, String tag, String imageUrl) {
+        this.title = title;
+        this.content = content;
+        this.tag = tag;
+        this.imageUrl = imageUrl;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+
+
+    public void updateCount(int newCount) {
+        this.count = newCount;
+    }
+
+    public void setBoardReport(int boardReport) {
+        this.boardReport = boardReport;
+    }
+
 }
+
+

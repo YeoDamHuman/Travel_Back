@@ -114,4 +114,10 @@ public class Tour {
 
     @Column(name = "price")
     private Long price;
+
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cart_id")
+    private Cart cartId;
 }
+
