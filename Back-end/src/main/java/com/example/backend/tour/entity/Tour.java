@@ -1,14 +1,12 @@
 package com.example.backend.tour.entity;
 
-import com.example.backend.cart.entity.Cart;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.util.UUID;
 
 @Entity
-@Table(name = "tour",
-       uniqueConstraints = @UniqueConstraint(name = "uk_cart_content", columnNames = {"cart_id", "content_id"}))
+@Table(name = "tour")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
@@ -95,7 +93,7 @@ public class Tour {
     @Column(name = "lcls_systm3", length = 50)
     private String lclsSystm3;
 
-    @Column(name = "content_id", length = 100)
+    @Column(name = "content_id", length = 100, unique = true)
     private String contentId;
 
     @Column(name = "content_type_id", length = 100)
@@ -116,8 +114,4 @@ public class Tour {
 
     @Column(name = "price")
     private Long price;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "cart_id")
-    private Cart cartId;
 }
