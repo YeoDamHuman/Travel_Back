@@ -1,7 +1,6 @@
 package com.example.backend.tour.webclient;
 
 import com.example.backend.tour.dto.response.TourResponse;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -20,7 +19,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Component
-@Slf4j
 public class TourApiClientImpl implements TourApiClient {
 
     private final WebClient webClient;
@@ -28,7 +26,6 @@ public class TourApiClientImpl implements TourApiClient {
     private final String baseUrl;
 
     public TourApiClientImpl(WebClient.Builder webClientBuilder, @Value("${tour.api.base-url}") String baseUrl, @Value("${tour.api.key}") String serviceKey) {
-        log.info("TourApiClientImpl baseUrl: {}", baseUrl);
         this.webClient = webClientBuilder.baseUrl(baseUrl).build();
         this.serviceKey = serviceKey;
         this.baseUrl = baseUrl;
@@ -74,7 +71,7 @@ public class TourApiClientImpl implements TourApiClient {
         if (keyword != null && !keyword.isEmpty()) {
             endpoint = "/searchKeyword2";
         } else {
-            endpoint = "/areaBasedList2";
+            endpoint = "/areaBasedList2clau";
         }
 
         String url = baseUrl + endpoint;
@@ -96,7 +93,6 @@ public class TourApiClientImpl implements TourApiClient {
             if (areaCode != null) {
                 uriBuilder.queryParam("areaCode", URLEncoder.encode(areaCode, StandardCharsets.UTF_8));
             } else {
-                log.warn("Unknown region: {}. Skipping areaCode parameter.", region);
             }
         }
 
@@ -105,29 +101,24 @@ public class TourApiClientImpl implements TourApiClient {
             if (contentTypeId != null) {
                 uriBuilder.queryParam("contentTypeId", URLEncoder.encode(contentTypeId, StandardCharsets.UTF_8));
             } else {
-                log.warn("Unknown category: {}. Skipping contentTypeId parameter.", category);
             }
         }
 
         URI uri = uriBuilder.build(true).toUri();
 
-        log.info("Calling Tour API: {}", uri);
 
         Map<String, Object> apiResponse = webClient.get()
                 .uri(uri)
                 .retrieve()
                 .bodyToMono(Map.class)
-                .doOnError(e -> log.error("Failed to call Tour API: {}", uri, e))
                 .block();
 
         if (apiResponse == null || !apiResponse.containsKey("response")) {
-            log.warn("Invalid API response structure: {}", apiResponse);
             return new PageImpl<>(Collections.emptyList(), pageable, 0);
         }
 
         Map<String, Object> responseBody = (Map<String, Object>) ((Map<String, Object>) apiResponse.get("response")).get("body");
         if (responseBody == null || !responseBody.containsKey("items")) {
-            log.info("No items found in API response for URI: {}", uri);
             return new PageImpl<>(Collections.emptyList(), pageable, 0);
         }
 
@@ -200,17 +191,14 @@ public class TourApiClientImpl implements TourApiClient {
                 .uri(uri)
                 .retrieve()
                 .bodyToMono(Map.class)
-                .doOnError(e -> log.error("Failed to fetch tour details for contentId: {}", contentId, e))
                 .block();
 
         if (apiResponse == null || !apiResponse.containsKey("response")) {
-            log.warn("Invalid API response structure for details: {}", apiResponse);
             return null;
         }
 
         Map<String, Object> responseBody = (Map<String, Object>) ((Map<String, Object>) apiResponse.get("response")).get("body");
         if (responseBody == null || !responseBody.containsKey("items")) {
-            log.info("No items found in API response for details URI: {}", uri);
             return null;
         }
 
@@ -218,7 +206,6 @@ public class TourApiClientImpl implements TourApiClient {
         List<Map<String, Object>> itemList = (List<Map<String, Object>>) items.get("item");
 
         if (itemList == null || itemList.isEmpty()) {
-            log.info("No item found in API response for details URI: {}", uri);
             return null;
         }
 

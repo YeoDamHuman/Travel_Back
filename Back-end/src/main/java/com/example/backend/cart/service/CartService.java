@@ -1,17 +1,15 @@
 package com.example.backend.cart.service;
 
+import com.example.backend.cart.dto.request.AddTourRequest;
 import com.example.backend.cart.dto.response.CartResponse;
 import com.example.backend.cart.entity.Cart;
-import com.example.backend.cart.entity.CartItem;
-import com.example.backend.cart.repository.CartItemRepository;
 import com.example.backend.cart.repository.CartRepository;
 import com.example.backend.common.exception.BusinessException;
 import com.example.backend.tour.entity.Tour;
-import com.example.backend.tour.service.TourService;
+import com.example.backend.tour.repository.TourRepository;
 import com.example.backend.user.entity.User;
 import com.example.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,13 +19,11 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class CartService {
 
     private final CartRepository cartRepository;
-    private final CartItemRepository cartItemRepository;
+    private final TourRepository tourRepository;
     private final UserRepository userRepository;
-    private final TourService tourService;
 
     @Transactional(readOnly = true)
     public CartResponse.CartDetailResponse getCart(String userIdString) {
@@ -38,9 +34,9 @@ public class CartService {
             return CartResponse.CartDetailResponse.empty();
         }
 
-        List<CartItem> cartItems = cartItemRepository.findByCart(cart);
-        List<CartResponse.TourInfo> tourInfos = cartItems.stream()
-                .map(cartItem -> mapToTourInfo(cartItem.getTour()))
+        List<Tour> tours = tourRepository.findByCart(cart);
+        List<CartResponse.TourInfo> tourInfos = tours.stream()
+                .map(this::mapToTourInfo)
                 .collect(Collectors.toList());
 
         long totalPrice = tourInfos.stream()
@@ -57,21 +53,52 @@ public class CartService {
     }
 
     @Transactional
-    public CartResponse.AddTourResponse addTourToCart(String userIdString, String contentId) {
+    public CartResponse.AddTourResponse addTourToCart(String userIdString, AddTourRequest request) {
         User user = findUserById(userIdString);
         Cart cart = cartRepository.findByUser(user).orElseGet(() -> createNewCart(user));
 
-        Tour tour = tourService.getOrCreateTour(contentId);
-
-        cartItemRepository.findByCartAndTour(cart, tour).ifPresent(item -> {
+        Tour existingTour = tourRepository.findByContentId(request.getContentId()).orElse(null);
+        if (existingTour != null && existingTour.getCart() != null) {
             throw new BusinessException("CART_DUPLICATE_TOUR", "이미 장바구니에 추가된 투어입니다.");
-        });
+        }
 
-        CartItem cartItem = CartItem.createCartItem(cart, tour);
-        cartItemRepository.save(cartItem);
+        Tour tour = Tour.builder()
+                .cart(cart)
+                .contentId(request.getContentId())
+                .contentTypeId(request.getContentTypeId())
+                .title(request.getTitle())
+                .address(request.getAddress())
+                .address2(request.getAddress2())
+                .zipcode(request.getZipcode())
+                .areaCode(request.getAreaCode())
+                .cat1(request.getCat1())
+                .cat2(request.getCat2())
+                .cat3(request.getCat3())
+                .createdTime(request.getCreatedTime())
+                .firstImage(request.getFirstImage())
+                .firstImage2(request.getFirstImage2())
+                .cpyrhtDivCd(request.getCpyrhtDivCd())
+                .mapX(request.getMapX())
+                .mapY(request.getMapY())
+                .mlevel(request.getMlevel())
+                .modifiedTime(request.getModifiedTime())
+                .sigunguCode(request.getSigunguCode())
+                .tel(request.getTel())
+                .overview(request.getOverview())
+                .lDongRegnCd(request.getLdongRegnCd())
+                .lDongSignguCd(request.getLdongSignguCd())
+                .lclsSystm1(request.getLclsSystm1())
+                .lclsSystm2(request.getLclsSystm2())
+                .lclsSystm3(request.getLclsSystm3())
+                .longitude(request.getMapX() != null && !request.getMapX().isEmpty() ? new java.math.BigDecimal(request.getMapX()) : null)
+                .latitude(request.getMapY() != null && !request.getMapY().isEmpty() ? new java.math.BigDecimal(request.getMapY()) : null)
+                .image(request.getFirstImage())
+                .build();
+        
+        tourRepository.save(tour);
 
-        if (cart.getCartItems().isEmpty()) {
-            String region = extractRegionFromAddress(tour.getAddress());
+        if (cart.getRegion() == null || cart.getRegion().isEmpty()) {
+            String region = extractRegionFromAddress(request.getAddress());
             cart.updateRegion(region);
             cartRepository.save(cart);
         }
@@ -83,16 +110,14 @@ public class CartService {
     public void removeTourFromCart(String userIdString, UUID tourId) {
         User user = findUserById(userIdString);
         Cart cart = findCartByUser(user);
-        cartItemRepository.deleteByCartAndTour_TourId(cart, tourId);
-        log.info("투어 삭제 완료 - tourId: {}", tourId);
+        tourRepository.deleteByCartAndTourId(cart, tourId);
     }
 
     @Transactional
     public void clearCart(String userIdString) {
         User user = findUserById(userIdString);
         Cart cart = findCartByUser(user);
-        cartItemRepository.deleteAllByCart(cart);
-        log.info("장바구니 전체 삭제 완료 - userId: {}", userIdString);
+        tourRepository.deleteAllByCart(cart);
     }
 
     private User findUserById(String userIdString) {
@@ -130,10 +155,36 @@ public class CartService {
                 .longitude(tour.getLongitude())
                 .latitude(tour.getLatitude())
                 .address(tour.getAddress())
+                .address2(tour.getAddress2())
+                .zipcode(tour.getZipcode())
+                .areaCode(tour.getAreaCode())
+                .cat1(tour.getCat1())
+                .cat2(tour.getCat2())
+                .cat3(tour.getCat3())
+                .createdTime(tour.getCreatedTime())
+                .firstImage(tour.getFirstImage())
+                .firstImage2(tour.getFirstImage2())
+                .cpyrhtDivCd(tour.getCpyrhtDivCd())
+                .mapX(tour.getMapX())
+                .mapY(tour.getMapY())
+                .mlevel(tour.getMlevel())
+                .modifiedTime(tour.getModifiedTime())
+                .sigunguCode(tour.getSigunguCode())
+                .tel(tour.getTel())
+                .overview(tour.getOverview())
+                .lDongRegnCd(tour.getLDongRegnCd())
+                .lDongSignguCd(tour.getLDongSignguCd())
+                .lclsSystm1(tour.getLclsSystm1())
+                .lclsSystm2(tour.getLclsSystm2())
+                .lclsSystm3(tour.getLclsSystm3())
+                .contentId(tour.getContentId())
+                .contentTypeId(tour.getContentTypeId())
+                .title(tour.getTitle())
                 .image(tour.getImage())
                 .tema(tour.getTema())
-                .category(tour.getCategory() != null ? tour.getCategory().getDescription() : null)
+                .category(tour.getCategory())
                 .price(tour.getPrice())
+                .thema(tour.getThema())
                 .build();
     }
 }

@@ -37,7 +37,7 @@ public class CartController {
     public ResponseEntity<CartResponse.AddTourResponse> addTourToCart(
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestBody AddTourRequest request) {
-        CartResponse.AddTourResponse response = cartService.addTourToCart(userDetails.getUsername(), request.getContentId());
+        CartResponse.AddTourResponse response = cartService.addTourToCart(userDetails.getUsername(), request);
         return ResponseEntity.ok(response);
     }
 

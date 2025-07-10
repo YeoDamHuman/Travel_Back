@@ -11,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.Optional;
 
 @Service
@@ -64,11 +65,12 @@ public class TourService {
                 .tel(dto.getTel())
                 .overview(dto.getOverview())
                 .longitude(dto.getMapX() != null && !dto.getMapX().isEmpty()
-                        ? Double.valueOf(dto.getMapX()) : null)
+                        ? new BigDecimal(dto.getMapX()) : null)
                 .latitude(dto.getMapY() != null && !dto.getMapY().isEmpty()
-                        ? Double.valueOf(dto.getMapY()) : null)
+                        ? new BigDecimal(dto.getMapY()) : null)
                 .image(dto.getFirstImage())
-                .category(mapContentTypeToCategory(dto.getContentTypeId()))
+                .category(mapContentTypeToCategory(dto.getContentTypeId()) != null 
+                        ? mapContentTypeToCategory(dto.getContentTypeId()).name() : null)
                 .build();
     }
 
