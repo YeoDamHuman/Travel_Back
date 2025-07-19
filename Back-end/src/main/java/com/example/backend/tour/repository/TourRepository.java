@@ -6,20 +6,14 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface TourRepository extends JpaRepository<Tour, UUID> {
 
-    List<Tour> findByCartId(Cart cart);
-
-    boolean existsByCartIdAndAddress(Cart cart, String address);
-
-    void deleteByCartIdAndTourId(Cart cart, UUID tourId);
-
-    void deleteAllByCartId(Cart cart);
-
-    int countByCartId(Cart cart);
-
-    boolean existsByCartIdAndContentId(Cart cart, String contentId);
+    Optional<Tour> findByContentId(String contentId);
+    List<Tour> findByCart(Cart cart);
+    void deleteByCartAndTourId(Cart cart, UUID tourId);
+    void deleteAllByCart(Cart cart);
 }

@@ -50,7 +50,7 @@ public class UserService {
         User savedUser = userRepository.save(user);
 
         Cart cart = Cart.builder()
-                .userId(savedUser)
+                .user(savedUser)
                 .region("서울")
                 .build();
         cartRepository.save(cart);

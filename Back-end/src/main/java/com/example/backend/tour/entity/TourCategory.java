@@ -5,7 +5,8 @@ public enum TourCategory {
     RESTAURANT("맛집"),
     ACCOMMODATION("숙소"),
     HEALING("힐링"),
-    LEISURE("레저");
+    LEISURE("레저"),
+    ETC("기타");
 
     private final String description;
 
