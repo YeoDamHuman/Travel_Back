@@ -39,7 +39,6 @@ public class KakaoService {
         try {
             RestTemplate restTemplate = new RestTemplate();
 
-            // access_token 요청
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
             MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
@@ -54,7 +53,6 @@ public class KakaoService {
 
             String accessToken = (String) tokenResponse.getBody().get("access_token");
 
-            // 사용자 정보 요청
             HttpHeaders userInfoHeaders = new HttpHeaders();
             userInfoHeaders.set("Authorization", "Bearer " + accessToken);
             HttpEntity<Void> userInfoRequest = new HttpEntity<>(userInfoHeaders);
@@ -74,7 +72,6 @@ public class KakaoService {
             String nickname = (String) profile.get("nickname");
             String profileImage = (String) profile.get("profile_image_url");
 
-            // 유저 저장 또는 가져오기
             User user;
             if (userRepository.existsByEmail(email)) {
                 user = userRepository.findByEmail(email).orElseThrow();
@@ -89,7 +86,6 @@ public class KakaoService {
                 userRepository.save(user);
             }
 
-            // JWT 생성
             JwtDto jwtDto = jwtGenerator.generateToken(user);
 
             return ResponseEntity.ok(
@@ -105,7 +101,7 @@ public class KakaoService {
         } catch (Exception e) {
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(null); // 또는 에러 응답 DTO를 정의해도 됨
+                    .body(null);
         }
     }
 }
