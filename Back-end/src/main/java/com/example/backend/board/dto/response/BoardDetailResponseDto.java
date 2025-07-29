@@ -15,6 +15,7 @@ public class BoardDetailResponseDto {
     private String title;
     private String content;
     private String userNickname;
+    private String userProfileImage;
     private LocalDateTime createdAt;
     private int count;
     private String tag;

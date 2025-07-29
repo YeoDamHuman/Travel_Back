@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 public class CommentResponseDto {
     private UUID commentId;
     private String userNickname;
+    private String userProfileImage;
     private String content;
     private LocalDateTime createdAt;
 }
