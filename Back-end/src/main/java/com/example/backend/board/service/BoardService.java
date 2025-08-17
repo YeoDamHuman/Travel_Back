@@ -4,6 +4,7 @@ import com.example.backend.board.dto.request.BoardRequestDto;
 import com.example.backend.board.dto.request.BoardUpdateRequestDto;
 import com.example.backend.board.dto.response.BoardDetailResponseDto;
 import com.example.backend.board.entity.Board;
+import com.example.backend.board.entity.BoardImage;
 import com.example.backend.comment.dto.response.CommentResponseDto;
 import com.example.backend.comment.entity.Comment;
 import com.example.backend.comment.repository.CommentRepository;
@@ -40,8 +41,13 @@ public class BoardService {
                 .content(requestDto.getContent())
                 .tag(requestDto.getTag())
                 .userId(user)
-                .imageUrl(requestDto.getImageUrl())
                 .build();
+
+        if (requestDto.getImageUrls() != null) {
+            requestDto.getImageUrls().forEach(url ->
+                    board.addImage(BoardImage.builder().imgUrl(url).build())
+            );
+        }
 
         Board saved = boardRepository.save(board);
         return saved.getBoardId();
@@ -60,7 +66,7 @@ public class BoardService {
                     .userProfileImage(board.getUserId().getUserProfileImage())
                     .createdAt(board.getCreatedAt())
                     .count(board.getCount())
-                    .imageUrl(board.getImageUrl())
+                    .imageUrl(board.getImages().isEmpty() ? null : board.getImages().get(0).getImgUrl())
                     .tag(board.getTag())
                     .build();
         }).toList();
@@ -71,6 +77,11 @@ public class BoardService {
     public BoardDetailResponseDto getBoardDetail(UUID boardId) {
         Board board = boardRepository.findById(boardId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 게시글입니다."));
+
+        List<String> images = board.getImages().stream()
+                .map(BoardImage::getImgUrl)
+                .toList();
+
 
         // 댓글 페이징 조회 (처음 5개만)
         Pageable pageable = PageRequest.of(0, 5, Sort.by("createdAt").descending());
@@ -95,7 +106,7 @@ public class BoardService {
                 .userProfileImage(board.getUserId().getUserProfileImage())
                 .createdAt(board.getCreatedAt())
                 .count(board.getCount())
-                .imageUrl(board.getImageUrl())
+                .imageUrls(images)
                 .tag(board.getTag())
                 .comments(comments)
                 .hasNextComment(commentPage.hasNext())
@@ -116,9 +127,17 @@ public class BoardService {
         board.update(
                 requestDto.getTitle(),
                 requestDto.getContent(),
-                requestDto.getTag(),
-                requestDto.getImageUrl()
+                requestDto.getTag()
         );
+
+        List<String> newUrls = requestDto.getImageUrls() == null ? List.of() : requestDto.getImageUrls();
+
+        board.getImages().removeIf(img -> !newUrls.contains(img.getImgUrl()));
+
+        for (String url : newUrls) {
+            boolean exists = board.getImages().stream().anyMatch(i -> i.getImgUrl().equals(url));
+            if (!exists) board.addImage(BoardImage.builder().imgUrl(url).build());
+        }
     }
 
     //삭제
