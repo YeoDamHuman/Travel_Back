@@ -20,7 +20,7 @@ public class BoardDetailResponseDto {
     private int count;
     private String tag;
     private List<CommentResponseDto> comments;
-    private String imageUrl;
+    private List<String> imageUrls;
     private boolean hasNextComment;
 
 }

@@ -7,6 +7,8 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -50,19 +52,23 @@ public class Board {
     @JoinColumn(name = "user_id")
     private User userId;
 
-    @Column(name = "image_url", length = 500)
-    private String imageUrl;
+    @OneToMany(mappedBy = "board", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("boardImg asc")
+    @Builder.Default
+    private List<BoardImage> images = new ArrayList<>();
 
+    public void addImage(BoardImage img) {
+        if (this.images == null) this.images = new ArrayList<>();
+        this.images.add(img);
+        img.setBoard(this);
+    }
 
-    public void update(String title, String content, String tag, String imageUrl) {
+    public void update(String title, String content, String tag) {
         this.title = title;
         this.content = content;
         this.tag = tag;
-        this.imageUrl = imageUrl;
         this.updatedAt = LocalDateTime.now();
     }
-
-
 
     public void updateCount(int newCount) {
         this.count = newCount;
