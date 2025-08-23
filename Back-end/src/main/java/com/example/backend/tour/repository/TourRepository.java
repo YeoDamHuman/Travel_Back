@@ -11,9 +11,15 @@ import java.util.UUID;
 
 @Repository
 public interface TourRepository extends JpaRepository<Tour, UUID> {
+    List<Tour> findByCartId(Cart cart);
 
-    Optional<Tour> findByContentId(String contentId);
-    List<Tour> findByCart(Cart cart);
-    void deleteByCartAndTourId(Cart cart, UUID tourId);
-    void deleteAllByCart(Cart cart);
+    boolean existsByCartIdAndAddress(Cart cart, String address);
+
+    boolean existsByCartIdAndContentId(Cart cart, String contentId);
+
+    void deleteByCartIdAndTourId(Cart cart, UUID tourId);
+
+    void deleteAllByCartId(Cart cart);
+
+    int countByCartId(Cart cart);
 }
