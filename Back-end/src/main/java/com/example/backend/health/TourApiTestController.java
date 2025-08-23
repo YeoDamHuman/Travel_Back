@@ -46,7 +46,7 @@ public class TourApiTestController {
             // 올바른 API 엔드포인트 사용
             String uri = UriComponentsBuilder.fromHttpUrl(baseUrl)
                     .path("/areaBasedList2")
-                    .queryParam("serviceKey", apiKey)
+                    .queryParam("serviceKey", URLEncoder.encode(apiKey, StandardCharsets.UTF_8))
                     .queryParam("MobileOS", "ETC")
                     .queryParam("MobileApp", "TravelPlanner")
                     .queryParam("_type", "json")
@@ -54,7 +54,7 @@ public class TourApiTestController {
                     .queryParam("pageNo", "1")
                     .queryParam("numOfRows", "5")
                     .queryParam("areaCode", "1")  // 서울
-                    .build(false)
+                    .build()
                     .toUriString();
 
             log.info("요청 URL: {}", uri);
@@ -148,7 +148,7 @@ public class TourApiTestController {
 
             // 직접 URL 문자열로 생성 (listYN 제거)
             String uri = baseUrl + "/searchKeyword2" +
-                    "?serviceKey=" + apiKey +
+                    "?serviceKey=" + URLEncoder.encode(apiKey, StandardCharsets.UTF_8) +
                     "&MobileOS=ETC" +
                     "&MobileApp=TravelPlanner" +
                     "&_type=json" +
@@ -198,7 +198,7 @@ public class TourApiTestController {
             // API 키를 디코딩하지 않고 그대로 사용
             String uri = UriComponentsBuilder.fromHttpUrl(baseUrl)
                     .path("/areaBasedList2")
-                    .queryParam("serviceKey", apiKey)
+                    .queryParam("serviceKey", URLEncoder.encode(apiKey, StandardCharsets.UTF_8))
                     .queryParam("MobileOS", "ETC")
                     .queryParam("MobileApp", "TravelPlanner")
                     .queryParam("_type", "json")
@@ -206,7 +206,7 @@ public class TourApiTestController {
                     .queryParam("numOfRows", "5")
                     .queryParam("pageNo", "1")
                     .queryParam("areaCode", "1")
-                    .build(false)  // false로 설정하여 인코딩 방지
+                    .build()
                     .toUriString();
 
             log.info("단순 호출 URL: {}", uri);

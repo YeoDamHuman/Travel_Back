@@ -4,6 +4,7 @@ import com.example.backend.cart.entity.Cart;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Entity
@@ -19,11 +20,15 @@ public class Tour {
     @Column(name = "tour_id", columnDefinition = "BINARY(16)", nullable = false)
     private UUID tourId;
 
-    @Column(name = "longitude")
-    private Double longitude;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cart_id", columnDefinition = "BINARY(16)")
+    private Cart cart;
 
-    @Column(name = "latitude")
-    private Double latitude;
+    @Column(name = "longitude", precision = 10, scale = 7)
+    private BigDecimal longitude;
+
+    @Column(name = "latitude", precision = 10, scale = 7)
+    private BigDecimal latitude;
 
     @Column(name = "address", length = 500)
     private String address;
@@ -109,14 +114,13 @@ public class Tour {
     @Column(name = "tema", length = 100)
     private String tema;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "category")
-    private TourCategory category;
+    @Column(name = "category", length = 50)
+    private String category;
 
-    @Column(name = "price")
+    @Column(name = "price", columnDefinition = "BIGINT")
     private Long price;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "cart_id")
-    private Cart cartId;
+    @Column(name = "thema", length = 50)
+    private String thema;
 }
+

@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Mono;
 
 import java.util.List;
 import java.util.UUID;
@@ -78,6 +79,14 @@ public class ScheduleController {
             @PathVariable UUID scheduleId) {
         ScheduleResponse.scheduleDetailResponse schedule = scheduleService.getScheduleDetail(scheduleId);
         return ResponseEntity.ok(schedule);
+    }
+
+    // 6️⃣ 경로 최적화
+    @PostMapping("/{scheduleId}/optimize")
+    @Operation(summary = "최적 동선", description = "스케쥴 최적 동선을 위해 gpt 사용하는 API.")
+    public Mono<ResponseEntity<ScheduleResponse.OptimizeRouteResponse>> optimizeSchedule(@PathVariable UUID scheduleId, @RequestBody ScheduleRequest.OptimizeRouteRequest request) {
+        return scheduleService.optimizeRoute(scheduleId, request)
+                .map(response -> ResponseEntity.ok(response));
     }
 
 }

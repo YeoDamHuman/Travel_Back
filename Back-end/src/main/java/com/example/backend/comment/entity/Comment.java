@@ -46,4 +46,12 @@ public class Comment {
     @JoinColumn(name = "user_id")
     private User userId;
 
+    public void update(String content) {
+        this.content = content;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void setCommentReport(int commentReport) {
+        this.commentReport = commentReport;
+    }
 }

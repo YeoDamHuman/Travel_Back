@@ -1,13 +1,13 @@
 package com.example.backend.schedule.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
+import lombok.*;
 
 import java.math.BigInteger;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.List;
 import java.util.UUID;
 
 public class ScheduleResponse {
@@ -86,5 +86,56 @@ public class ScheduleResponse {
         private LocalDateTime updatedAt;
         @Schema(description = "예산 (단위: 원)", example = "1500000")
         private BigInteger budget;
+        @Schema(description = "스케줄에 포함된 아이템 목록")
+        private List<scheduleItemInfo> scheduleItems;
     }
+
+    @Getter
+    @Builder
+    @AllArgsConstructor
+    public static class scheduleItemInfo {
+        @Schema(description = "아이템 ID", example = "d3f12c9b-4567-4d89-9a12-c3b4d6a7f456")
+        private UUID scheduleItemId;
+        @Schema(description = "장소 ID", example = "a1b2c3d4-5678-9101-1121-314151617181")
+        private UUID placeId;
+        @Schema(description = "일차 번호", example = "1")
+        private Integer dayNumber;
+        @Schema(description = "시작 시간", example = "10:00:00")
+        private LocalTime startTime;
+        @Schema(description = "종료 시간", example = "12:00:00")
+        private LocalTime endTime;
+        @Schema(description = "메모", example = "점심 식사")
+        private String memo;
+        @Schema(description = "비용", example = "50000")
+        private BigInteger cost;
+    }
+
+    @Getter
+    @Builder
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class OptimizeRouteResponse {
+        @Schema(description = "스케줄 ID", example = "9b9de25e-6a84-4b4e-b5e7-b81cdd90cc12")
+        private UUID scheduleId;
+        @Schema(description = "최적화된 경로 단계 리스트")
+        private List<RouteStep> optimizeRoute;
+    }
+
+    @Getter
+    @Builder
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class RouteStep {
+        @Schema(description = "경로 단계 순서", example = "1")
+        private int order;
+        @Schema(description = "장소 이름 또는 위치", example = "서울역")
+        private String location;
+        @Schema(description = "예상 소요 시간(분)", example = "30")
+        private int estimatedTimeMinutes;
+        @Schema(description = "해당 단계 거리(Km)", example = "12.5")
+        private double distanceKm;
+        @Schema(description = "몇 일차 일정인지", example = "2")
+        private Integer dayNumber;
+    }
+
 }

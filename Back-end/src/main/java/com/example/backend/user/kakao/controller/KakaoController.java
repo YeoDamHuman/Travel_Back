@@ -1,14 +1,13 @@
 package com.example.backend.user.kakao.controller;
 
+import com.example.backend.user.kakao.dto.request.KakaoRequest;
 import com.example.backend.user.kakao.dto.response.KakaoResponse;
 import com.example.backend.user.kakao.service.KakaoService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
 import java.io.IOException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -40,12 +39,12 @@ public class KakaoController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "JWT 및 유저 정보 반환 성공"),
     })
-    @GetMapping("/callback")
+    @PostMapping("/callback")
     public ResponseEntity<KakaoResponse.loginResponse> kakaoCallback(
-            @Parameter(description = "카카오 로그인 후 전달받은 인가 코드", required = true)
-            @RequestParam String code
+            @RequestBody KakaoRequest request
     ) {
-        return kakaoService.getUserInfo(code);
+        return kakaoService.getUserInfo(request.getCode());
     }
+
 
 }
