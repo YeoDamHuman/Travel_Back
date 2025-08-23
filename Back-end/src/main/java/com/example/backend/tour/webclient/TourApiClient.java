@@ -394,7 +394,7 @@ public class TourApiClient {
     }
 
     /**
-     * 통합 응답 객체 생성 (OpenAPI 명세 기준)
+     * 프론트엔드 요구사항에 맞는 간소화된 응답 생성
      */
     private CartResponse.TourDetailResponse buildIntegratedDetailResponse(
             String contentId, String contentTypeId,
@@ -402,38 +402,36 @@ public class TourApiClient {
             JsonNode imageData, JsonNode petData) {
         
         try {
-            // Common 데이터에서 기본 정보 추출
+            // 프론트엔드 필수 정보만 추출
             String title = commonData.path("title").asText("");
-            String overview = commonData.path("overview").asText("");
-            String tel = commonData.path("tel").asText("");
             String addr1 = commonData.path("addr1").asText("");
-            String addr2 = commonData.path("addr2").asText("");
-            String zipcode = commonData.path("zipcode").asText("");
             String areacode = commonData.path("areacode").asText("");
-            String sigungucode = commonData.path("sigungucode").asText("");
             String cat1 = commonData.path("cat1").asText("");
             String cat2 = commonData.path("cat2").asText("");
             String cat3 = commonData.path("cat3").asText("");
             String mapx = commonData.path("mapx").asText("");
             String mapy = commonData.path("mapy").asText("");
             String firstimage = commonData.path("firstimage").asText("");
+            
+            // 상세 페이지용 추가 정보 (선택사항)
+            String tel = commonData.path("tel").asText("");
             String homepage = commonData.path("homepage").asText("");
 
             return CartResponse.TourDetailResponse.builder()
                     .contentId(contentId)
                     .contentTypeId(contentTypeId)
-                    .title(title)
-                    .address(addr1)
-                    .region(getRegionByAreaCode(areacode))
-                    .theme(getCategoryName(cat1, cat2, cat3))
-                    .latitude(parseDouble(mapy))
-                    .longitude(parseDouble(mapx))
-                    .image(firstimage)
-                    .tel(tel)
-                    .homepage(homepage)
-                    .overview(overview)
-                    .isFavorite(false)
-                    .isInCart(false)
+                    .title(title)                    // content_name 역할
+                    .address(addr1)                  // 주소
+                    .region(getRegionByAreaCode(areacode))  // 지역
+                    .theme(getCategoryName(cat1, cat2, cat3))  // 테마
+                    .latitude(parseDouble(mapy))     // 위도
+                    .longitude(parseDouble(mapx))    // 경도
+                    .image(firstimage)               // 이미지
+                    .tel(tel)                        // 전화번호 (상세 페이지용)
+                    .homepage(homepage)              // 홈페이지 (상세 페이지용)
+                    .overview("")                    // overview 제거 (불필요)
+                    .isFavorite(false)              // 즐겨찾기 상태
+                    .isInCart(false)                // 장바구니 상태
                     .build();
 
         } catch (Exception e) {
