@@ -24,11 +24,13 @@ public class CartResponse {
     @AllArgsConstructor
     public static class TourInfo {
         private UUID tourId;
+        private String contentId;
+        private String title;
+        private String image;
+        private String tema;
         private Double longitude;
         private Double latitude;
         private String address;
-        private String image;
-        private String tema;
         private TourCategory category;
         private Long price;
     }
@@ -73,5 +75,36 @@ public class CartResponse {
         private String lclsSystm1;
         private String lclsSystm2;
         private String lclsSystm3;
+    }
+
+    @Getter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class TourDetailResponse {
+        private String contentId;
+        private String contentTypeId;
+        private String title;
+        private String address;
+        private String region;
+        private String theme;
+        private Double latitude;
+        private Double longitude;
+        private String image;
+        private String tel;
+        private String homepage;
+        private String overview;
+        private boolean isFavorite;
+        private boolean isInCart;
+    }
+
+    @Getter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class SimpleTourResponse {
+        private String contentId;
+        private String title;
+        private String image;
     }
 }
