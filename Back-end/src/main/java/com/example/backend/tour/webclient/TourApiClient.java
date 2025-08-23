@@ -299,63 +299,34 @@ public class TourApiClient {
     }
 
     /**
-     * 특정 contentId의 상세 정보 조회 (캐시 우선, API 보조)
+     * contentId로 투어 상세 정보 조회 (KorService2 표준 API 사용)
      */
     public CartResponse.TourDetailResponse getTourDetail(String contentId) {
         try {
-            log.info("=== getTourDetail 시작 - contentId: {} ===", contentId);
+            log.info("getTourDetail - contentId: {}", contentId);
 
-            // 검색 API로 해당 contentId 찾기
-            for (int page = 1; page <= 50; page++) {
-                String searchUrl = UriComponentsBuilder.fromHttpUrl(baseUrl)
-                        .path("/areaBasedList2")
-                        .queryParam("ServiceKey", apiKey)
-                        .queryParam("numOfRows", 100)
-                        .queryParam("pageNo", page)
-                        .queryParam("MobileOS", "ETC")
-                        .queryParam("MobileApp", "TourApp")
-                        .queryParam("arrange", "A")
-                        .queryParam("_type", "json")
-                        .build(false)
-                        .toUriString();
-
-                String response = webClient.get()
-                        .uri(searchUrl)
-                        .retrieve()
-                        .bodyToMono(String.class)
-                        .timeout(Duration.ofSeconds(10))
-                        .block();
-
-                JsonNode root = objectMapper.readTree(response);
-                JsonNode responseNode = root.path("response");
-                
-                if (!"0000".equals(responseNode.path("header").path("resultCode").asText())) {
-                    continue;
-                }
-
-                JsonNode items = responseNode.path("body").path("items");
-                JsonNode itemNode = items.path("item");
-
-                if (itemNode.isArray()) {
-                    for (JsonNode item : itemNode) {
-                        if (contentId.equals(item.path("contentid").asText())) {
-                            log.info("검색에서 contentId {} 찾음: {}", contentId, item.path("title").asText());
-                            return buildTourDetailFromSearchResult(item);
-                        }
-                    }
-                } else if (!itemNode.isMissingNode()) {
-                    if (contentId.equals(itemNode.path("contentid").asText())) {
-                        return buildTourDetailFromSearchResult(itemNode);
-                    }
-                }
-                
-                // 더 이상 데이터가 없으면 중단
-                if (responseNode.path("body").path("totalCount").asInt() <= page * 100) {
-                    break;
-                }
+            // 1. detailCommon2 호출
+            JsonNode commonData = callDetailApi("detailCommon2", contentId, null);
+            if (commonData == null) {
+                return createFallbackDetailResponse(contentId);
             }
+
+            // contentTypeId 추출
+            String contentTypeId = commonData.path("contenttypeid").asText("12");
             
-            return createFallbackDetailResponse(contentId);
+            // 2. detailIntro2 호출 (contentTypeId 필요)
+            JsonNode introData = callDetailApi("detailIntro2", contentId, contentTypeId);
+            
+            // 3. detailInfo2 호출 (contentTypeId 필요) 
+            JsonNode infoData = callDetailApi("detailInfo2", contentId, contentTypeId);
+            
+            // 4. detailImage2 호출
+            JsonNode imageData = callDetailApi("detailImage2", contentId, null);
+            
+            // 5. detailPetTour2 호출 (선택사항)
+            JsonNode petData = callDetailApi("detailPetTour2", contentId, null);
+
+            return buildIntegratedDetailResponse(contentId, contentTypeId, commonData, introData, infoData, imageData, petData);
 
         } catch (Exception e) {
             log.error("상세 정보 조회 실패 - contentId: {}", contentId, e);
@@ -364,256 +335,115 @@ public class TourApiClient {
     }
 
     /**
-     * 검색 결과에서 상세 정보 생성
+     * KorService2 Detail API 호출 (Postman Collection 기준)
      */
-    private CartResponse.TourDetailResponse buildTourDetailFromSearchResult(JsonNode item) {
-        return CartResponse.TourDetailResponse.builder()
-                .contentId(item.path("contentid").asText())
-                .contentTypeId(item.path("contenttypeid").asText())
-                .title(item.path("title").asText())
-                .address(item.path("addr1").asText())
-                .region(getRegionByAreaCode(item.path("areacode").asText()))
-                .theme(getCategoryName(item.path("cat1").asText("A02"), 
-                                     item.path("cat2").asText(""), 
-                                     item.path("cat3").asText("")))
-                .latitude(parseDouble(item.path("mapy").asText("")))
-                .longitude(parseDouble(item.path("mapx").asText("")))
-                .image(item.path("firstimage").asText(""))
-                .tel(item.path("tel").asText(""))
-                .homepage("")
-                .overview("")
-                .isFavorite(false)
-                .isInCart(false)
-                .build();
-    }
-    
-    /**
-     * 캐시 데이터로 상세 응답 생성
-     */
-    private CartResponse.TourDetailResponse buildDetailResponseFromCache(JsonNode item, String contentId) {
+    private JsonNode callDetailApi(String apiPath, String contentId, String contentTypeId) {
         try {
-            return CartResponse.TourDetailResponse.builder()
-                    .contentId(item.path("contentid").asText(contentId))
-                    .contentTypeId(item.path("contenttypeid").asText("12"))
-                    .title(item.path("title").asText("정보 없음"))
-                    .address(item.path("addr1").asText(""))
-                    .region(getRegionByAreaCode(item.path("areacode").asText("1")))
-                    .theme(getCategoryName(item.path("cat1").asText("A02"), 
-                                        item.path("cat2").asText(""), 
-                                        item.path("cat3").asText("")))
-                    .latitude(parseDouble(item.path("mapy").asText("")))
-                    .longitude(parseDouble(item.path("mapx").asText("")))
-                    .image(item.path("firstimage").asText(""))
-                    .tel(item.path("tel").asText(""))
-                    .homepage("")
-                    .overview("")
-                    .isFavorite(false)
-                    .isInCart(false)
-                    .build();
-        } catch (Exception e) {
-            log.error("캐시 데이터로 응답 생성 오류", e);
-            return createFallbackDetailResponse(contentId);
-        }
-    }
-    
-    /**
-     * searchKeyword2 응답에서 특정 contentId 찾아서 상세 정보 파싱
-     */
-    private CartResponse.TourDetailResponse parseSearchResponseForDetail(String response, String contentId) {
-        try {
+            UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(baseUrl)
+                    .path("/" + apiPath)
+                    .queryParam("serviceKey", apiKey)
+                    .queryParam("MobileOS", "ETC")
+                    .queryParam("MobileApp", "MyApp")
+                    .queryParam("contentId", contentId)
+                    .queryParam("_type", "json");
+
+            // detailIntro2, detailInfo2는 contentTypeId 필요
+            if (contentTypeId != null && ("detailIntro2".equals(apiPath) || "detailInfo2".equals(apiPath))) {
+                builder.queryParam("contentTypeId", contentTypeId);
+            }
+
+            // detailImage2는 imageYN 파라미터 필요
+            if ("detailImage2".equals(apiPath)) {
+                builder.queryParam("imageYN", "Y");
+            }
+
+            String uri = builder.build(false).toUriString();
+            log.info("{} 호출 URL: {}", apiPath, uri);
+
+            String response = webClient.get()
+                    .uri(uri)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .timeout(Duration.ofSeconds(10))
+                    .block();
+
             JsonNode root = objectMapper.readTree(response);
             JsonNode responseNode = root.path("response");
-
-            String resultCode = responseNode.path("header").path("resultCode").asText();
             
-            if (!"0000".equals(resultCode)) {
-                log.warn("검색 API 오류 - 코드: {}, 메시지: {}", resultCode, responseNode.path("header").path("resultMsg").asText());
-                throw new RuntimeException("검색 API 오류: " + resultCode);
+            if (!"0000".equals(responseNode.path("header").path("resultCode").asText())) {
+                log.warn("{} API 오류: {}", apiPath, responseNode.path("header").path("resultMsg").asText());
+                return null;
             }
 
             JsonNode items = responseNode.path("body").path("items");
             JsonNode itemNode = items.path("item");
             
-            // contentId와 정확히 일치하는 항목 찾기
-            JsonNode targetItem = null;
+            // 배열인 경우 첫 번째 항목 반환, 단일 항목인 경우 그대로 반환
+            if (itemNode.isArray() && itemNode.size() > 0) {
+                return itemNode.get(0);
+            } else if (!itemNode.isMissingNode() && !itemNode.isNull()) {
+                return itemNode;
+            }
             
-            if (itemNode.isArray()) {
-                for (JsonNode item : itemNode) {
-                    if (contentId.equals(item.path("contentid").asText())) {
-                        targetItem = item;
-                        log.info("contentId {} 정확 매칭 성공: {}", contentId, item.path("title").asText());
-                        break;
-                    }
-                }
-            } else if (!itemNode.isMissingNode()) {
-                if (contentId.equals(itemNode.path("contentid").asText())) {
-                    targetItem = itemNode;
-                }
-            }
+            return null;
 
-            if (targetItem == null) {
-                log.warn("searchKeyword2에서 contentId {} 를 찾지 못함", contentId);
-                throw new RuntimeException("해당 contentId 없음");
-            }
+        } catch (Exception e) {
+            log.error("{} 호출 실패: {}", apiPath, e.getMessage(), e);
+            return null;
+        }
+    }
+
+    /**
+     * 통합 응답 객체 생성 (OpenAPI 명세 기준)
+     */
+    private CartResponse.TourDetailResponse buildIntegratedDetailResponse(
+            String contentId, String contentTypeId,
+            JsonNode commonData, JsonNode introData, JsonNode infoData, 
+            JsonNode imageData, JsonNode petData) {
+        
+        try {
+            // Common 데이터에서 기본 정보 추출
+            String title = commonData.path("title").asText("");
+            String overview = commonData.path("overview").asText("");
+            String tel = commonData.path("tel").asText("");
+            String addr1 = commonData.path("addr1").asText("");
+            String addr2 = commonData.path("addr2").asText("");
+            String zipcode = commonData.path("zipcode").asText("");
+            String areacode = commonData.path("areacode").asText("");
+            String sigungucode = commonData.path("sigungucode").asText("");
+            String cat1 = commonData.path("cat1").asText("");
+            String cat2 = commonData.path("cat2").asText("");
+            String cat3 = commonData.path("cat3").asText("");
+            String mapx = commonData.path("mapx").asText("");
+            String mapy = commonData.path("mapy").asText("");
+            String firstimage = commonData.path("firstimage").asText("");
+            String homepage = commonData.path("homepage").asText("");
 
             return CartResponse.TourDetailResponse.builder()
-                    .contentId(targetItem.path("contentid").asText(contentId))
-                    .contentTypeId(targetItem.path("contenttypeid").asText("12"))
-                    .title(targetItem.path("title").asText("정보 없음"))
-                    .address(targetItem.path("addr1").asText(""))
-                    .region(getRegionByAreaCode(targetItem.path("areacode").asText("1")))
-                    .theme(getCategoryName(targetItem.path("cat1").asText("A02"), 
-                                        targetItem.path("cat2").asText(""), 
-                                        targetItem.path("cat3").asText("")))
-                    .latitude(parseDouble(targetItem.path("mapy").asText("")))
-                    .longitude(parseDouble(targetItem.path("mapx").asText("")))
-                    .image(targetItem.path("firstimage").asText(""))
-                    .tel(targetItem.path("tel").asText(""))
-                    .homepage("")  // searchKeyword2에서는 제공하지 않음
-                    .overview("")  // searchKeyword2에서는 제공하지 않음
+                    .contentId(contentId)
+                    .contentTypeId(contentTypeId)
+                    .title(title)
+                    .address(addr1)
+                    .region(getRegionByAreaCode(areacode))
+                    .theme(getCategoryName(cat1, cat2, cat3))
+                    .latitude(parseDouble(mapy))
+                    .longitude(parseDouble(mapx))
+                    .image(firstimage)
+                    .tel(tel)
+                    .homepage(homepage)
+                    .overview(overview)
                     .isFavorite(false)
                     .isInCart(false)
                     .build();
 
         } catch (Exception e) {
-            log.error("검색 기반 상세 정보 파싱 오류", e);
-            throw new RuntimeException("상세 정보 파싱 실패", e);
+            log.error("통합 응답 생성 실패", e);
+            return createFallbackDetailResponse(contentId);
         }
     }
+
     
-    /**
-     * 실제 TourAPI detailCommon2 응답 파싱 (미사용)
-     */
-    private CartResponse.TourDetailResponse parseRealTourDetailResponse(String response, String contentId) {
-        try {
-            log.info("API 응답 내용 확인: {}", response.substring(0, Math.min(response.length(), 1000)));
-            
-            JsonNode root = objectMapper.readTree(response);
-            JsonNode responseNode = root.path("response");
 
-            String resultCode = responseNode.path("header").path("resultCode").asText();
-            String resultMsg = responseNode.path("header").path("resultMsg").asText();
-            
-            log.info("API 응답 코드: {}, 메시지: {}", resultCode, resultMsg);
-
-            if (!"0000".equals(resultCode)) {
-                log.warn("API 오류 상세 - 코드: {}, 메시지: {}", resultCode, resultMsg);
-                throw new RuntimeException("API 오류 발생: " + resultCode + " - " + resultMsg);
-            }
-
-            JsonNode items = responseNode.path("body").path("items");
-            JsonNode item = items.path("item");
-            
-            if (item.isArray() && item.size() > 0) {
-                item = item.get(0);
-            } else if (item.isMissingNode() || item.isNull()) {
-                throw new RuntimeException("상세 정보 없음");
-            }
-
-            return CartResponse.TourDetailResponse.builder()
-                    .contentId(item.path("contentid").asText(contentId))
-                    .contentTypeId(item.path("contenttypeid").asText("12"))
-                    .title(item.path("title").asText("정보 없음"))
-                    .address(item.path("addr1").asText(""))
-                    .region(getRegionByAreaCode(item.path("areacode").asText("1")))
-                    .theme(getCategoryName(item.path("cat1").asText("A02"), 
-                                        item.path("cat2").asText(""), 
-                                        item.path("cat3").asText("")))
-                    .latitude(parseDouble(item.path("mapy").asText("")))
-                    .longitude(parseDouble(item.path("mapx").asText("")))
-                    .image(item.path("firstimage").asText(""))
-                    .tel(item.path("tel").asText(""))
-                    .homepage(cleanHomepage(item.path("homepage").asText("")))
-                    .overview(cleanOverview(item.path("overview").asText("")))
-                    .isFavorite(false)
-                    .isInCart(false)
-                    .build();
-
-        } catch (Exception e) {
-            log.error("실제 상세 정보 파싱 오류", e);
-            throw new RuntimeException("상세 정보 파싱 실패", e);
-        }
-    }
-
-    /**
-     * Fallback: 기본 검색 API로 상세 정보 조회
-     */
-    private CartResponse.TourDetailResponse getFallbackTourDetail(String contentId) {
-        try {
-            log.info("Fallback 검색 API로 상세 정보 조회 - contentId: {}", contentId);
-            
-            // 더 많은 페이지를 검색하여 contentId를 찾는 로직
-            for (int page = 1; page <= 10; page++) { // 최대 10페이지까지 검색
-                String uri = UriComponentsBuilder.fromHttpUrl(baseUrl)
-                        .path("/areaBasedList2")
-                        .queryParam("serviceKey", apiKey)
-                        .queryParam("MobileOS", "ETC")
-                        .queryParam("MobileApp", "TravelPlanner")
-                        .queryParam("_type", "json")
-                        .queryParam("arrange", "A")
-                        .queryParam("pageNo", page)
-                        .queryParam("numOfRows", "100")
-                        .build(false)
-                        .toUriString();
-
-                String response = webClient.get()
-                        .uri(uri)
-                        .retrieve()
-                        .bodyToMono(String.class)
-                        .timeout(Duration.ofSeconds(10))
-                        .block();
-
-                CartResponse.TourDetailResponse result = parseTourDetailResponseFromSearch(response, contentId);
-                // contentId가 일치하는 항목을 찾았으면 반환
-                if (result != null && contentId.equals(result.getContentId())) {
-                    return result;
-                }
-            }
-            
-            // 모든 페이지에서 찾지 못한 경우
-            log.warn("모든 Fallback 검색에서 contentId: {} 를 찾지 못함", contentId);
-            return createFallbackDetailResponse(contentId);
-
-        } catch (Exception e) {
-            log.error("Fallback 검색도 실패", e);
-            return createFallbackDetailResponse(contentId);
-        }
-    }
-
-    /**
-     * 홈페이지 URL 정리
-     */
-    private String cleanHomepage(String homepage) {
-        if (homepage == null || homepage.trim().isEmpty()) {
-            return "";
-        }
-        homepage = homepage.trim();
-        if (!homepage.startsWith("http://") && !homepage.startsWith("https://")) {
-            homepage = "http://" + homepage;
-        }
-        return homepage;
-    }
-
-    /**
-     * Overview 텍스트 정리
-     */
-    private String cleanOverview(String overview) {
-        if (overview == null) return "";
-        
-        // HTML 태그 제거
-        overview = overview.replaceAll("<[^>]*>", "");
-        // 연속된 공백 정리
-        overview = overview.replaceAll("\\s+", " ");
-        // 앞뒤 공백 제거
-        overview = overview.trim();
-        
-        // 너무 길면 자르기 (500자 제한)
-        if (overview.length() > 500) {
-            overview = overview.substring(0, 497) + "...";
-        }
-        
-        return overview;
-    }
 
     /**
      * 테마별 투어 검색 (cat1, cat2, cat3 활용)
@@ -699,71 +529,6 @@ public class TourApiClient {
         return themeMap.getOrDefault(theme, new String[]{});
     }
 
-    /**
-     * 검색 결과에서 특정 contentId의 상세 정보 파싱
-     */
-    private CartResponse.TourDetailResponse parseTourDetailResponseFromSearch(String response, String targetContentId) {
-        try {
-            JsonNode root = objectMapper.readTree(response);
-            JsonNode responseNode = root.path("response");
-
-            if (!responseNode.path("header").path("resultCode").asText().equals("0000")) {
-                log.warn("API 오류 발생, 기본 응답 반환: {}", responseNode.path("header").path("resultMsg").asText());
-                return createFallbackDetailResponse(targetContentId);
-            }
-
-            JsonNode items = responseNode.path("body").path("items");
-            JsonNode itemNode = items.path("item");
-
-            // contentId 일치하는 항목 찾기 (정확히 일치하는 항목만)
-            JsonNode targetItem = null;
-            
-            if (itemNode.isArray()) {
-                for (JsonNode item : itemNode) {
-                    if (targetContentId.equals(item.path("contentid").asText())) {
-                        targetItem = item;
-                        log.info("contentId {} 일치하는 항목 발견: {}", targetContentId, item.path("title").asText());
-                        break;
-                    }
-                }
-            } else if (!itemNode.isMissingNode()) {
-                // 단일 항목인 경우에도 contentId 체크
-                if (targetContentId.equals(itemNode.path("contentid").asText())) {
-                    targetItem = itemNode;
-                    log.info("단일 항목에서 contentId {} 일치 발견", targetContentId);
-                }
-            }
-
-            // 일치하는 항목이 없으면 null 반환 (fallback 처리하지 않음)
-            if (targetItem == null) {
-                log.info("현재 페이지에서 contentId {} 를 찾지 못함", targetContentId);
-                return null; // null 반환으로 변경
-            }
-
-            return CartResponse.TourDetailResponse.builder()
-                    .contentId(targetItem.path("contentid").asText(targetContentId))
-                    .contentTypeId(targetItem.path("contenttypeid").asText("12"))
-                    .title(targetItem.path("title").asText("정보 없음"))
-                    .address(targetItem.path("addr1").asText("주소 없음"))
-                    .region(getRegionByAreaCode(targetItem.path("areacode").asText("1")))
-                    .theme(getCategoryName(targetItem.path("cat1").asText("A02"), 
-                                        targetItem.path("cat2").asText(""), 
-                                        targetItem.path("cat3").asText("")))
-                    .latitude(parseDouble(targetItem.path("mapy").asText("37.5665")))
-                    .longitude(parseDouble(targetItem.path("mapx").asText("126.9780")))
-                    .image(targetItem.path("firstimage").asText(""))
-                    .tel(targetItem.path("tel").asText(""))
-                    .homepage("") // 기본 검색 API에서는 제공하지 않음
-                    .overview("") // 기본 검색 API에서는 제공하지 않음
-                    .isFavorite(false)
-                    .isInCart(false)
-                    .build();
-
-        } catch (Exception e) {
-            log.error("상세 정보 파싱 오류", e);
-            return createFallbackDetailResponse(targetContentId);
-        }
-    }
 
     /**
      * Fallback 응답 생성
