@@ -21,34 +21,28 @@ public class ScheduleItem {
     @Column(name = "schedule_item_id", columnDefinition = "BINARY(16)")
     private UUID scheduleItemId;
 
-    @Column(name = "place_id" , nullable = false, columnDefinition = "BINARY(16)")
-    private UUID placeId;
+    @Column(name = "content_id" , nullable = false, columnDefinition = "BINARY(16)")
+    private UUID contentId;
 
-    @Column(name = "day_number", nullable = false)
-    private Integer dayNumber;
+    @Column(name = "day_number", nullable = true)
+    private int dayNumber;
 
-    @Column(name = "start_time", nullable = false)
+    @Column(name = "start_time", nullable = true)
     private LocalTime startTime;
 
-    @Column(name = "end_time", nullable = false)
+    @Column(name = "end_time", nullable = true)
     private LocalTime endTime;
 
-    @Column(name = "memo", length = 100)
+    @Column(name = "memo", length = 100, nullable = true)
     private String memo;
 
     @Column(name = "cost", nullable = false)
-    private BigInteger cost;
+    private int cost;
+
+    @Column(name = "order", nullable = true)
+    private int order;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "schedule_id", nullable = false)
     private Schedule scheduleId;
-
-    public void updateScheduleItem(UUID placeId, Integer dayNumber, LocalTime startTime, LocalTime endTime, String memo, BigInteger cost) {
-        this.placeId = placeId;
-        this.dayNumber = dayNumber;
-        this.startTime = startTime;
-        this.endTime = endTime;
-        this.memo = memo;
-        this.cost = cost;
-    }
 }

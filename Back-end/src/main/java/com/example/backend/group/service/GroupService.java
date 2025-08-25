@@ -9,7 +9,6 @@ import com.example.backend.user.repository.UserRepository;
 import com.example.backend.common.auth.AuthUtil;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.UUID;
@@ -110,5 +109,10 @@ public class GroupService {
                 .groupId(group.getGroupId())
                 .memberCount(group.getUsers().size())
                 .build();
+    }
+
+    public Group findByIdWithUsers(UUID groupId) {
+        return groupRepository.findByIdWithUsers(groupId)
+                .orElseThrow(() -> new IllegalArgumentException("그룹을 찾을 수 없습니다."));
     }
 }
