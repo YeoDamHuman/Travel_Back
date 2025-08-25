@@ -16,8 +16,6 @@ public class ScheduleResponse {
     @Builder
     @AllArgsConstructor
     public static class scheduleCreateResponse {
-        @Schema(description = "응답 메시지", example = "스케쥴이 성공적으로 생성되었습니다.")
-        private String message;
         @Schema(description = "생성된 스케줄 ID", example = "9b9de25e-6a84-4b4e-b5e7-b81cdd90cc12")
         private UUID scheduleId;
     }
@@ -26,18 +24,8 @@ public class ScheduleResponse {
     @Builder
     @AllArgsConstructor
     public static class scheduleUpdateResponse {
-        @Schema(description = "응답 메시지", example = "스케쥴이 성공적으로 업데이트되었습니다.")
-        private String message;
         @Schema(description = "업데이트된 스케줄 ID", example = "9b9de25e-6a84-4b4e-b5e7-b81cdd90cc12")
         private UUID scheduleId;
-    }
-
-    @Getter
-    @Builder
-    @AllArgsConstructor
-    public static class scheduleDeleteResponse {
-        @Schema(description = "응답 메시지", example = "스케쥴이 성공적으로 삭제되었습니다.")
-        private String message;
     }
 
     @Getter
@@ -107,35 +95,7 @@ public class ScheduleResponse {
         @Schema(description = "메모", example = "점심 식사")
         private String memo;
         @Schema(description = "비용", example = "50000")
-        private BigInteger cost;
-    }
-
-    @Getter
-    @Builder
-    @AllArgsConstructor
-    @NoArgsConstructor
-    public static class OptimizeRouteResponse {
-        @Schema(description = "스케줄 ID", example = "9b9de25e-6a84-4b4e-b5e7-b81cdd90cc12")
-        private UUID scheduleId;
-        @Schema(description = "최적화된 경로 단계 리스트")
-        private List<RouteStep> optimizeRoute;
-    }
-
-    @Getter
-    @Builder
-    @AllArgsConstructor
-    @NoArgsConstructor
-    public static class RouteStep {
-        @Schema(description = "경로 단계 순서", example = "1")
-        private int order;
-        @Schema(description = "장소 이름 또는 위치", example = "서울역")
-        private String location;
-        @Schema(description = "예상 소요 시간(분)", example = "30")
-        private int estimatedTimeMinutes;
-        @Schema(description = "해당 단계 거리(Km)", example = "12.5")
-        private double distanceKm;
-        @Schema(description = "몇 일차 일정인지", example = "2")
-        private Integer dayNumber;
+        private int cost;
     }
 
 }

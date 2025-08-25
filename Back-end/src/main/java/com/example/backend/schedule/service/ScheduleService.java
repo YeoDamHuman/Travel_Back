@@ -1,10 +1,14 @@
 package com.example.backend.schedule.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.example.backend.common.auth.AuthUtil;
+import com.example.backend.schedule.dto.request.ScheduleRequest.ScheduleCreateRequest;
+import com.example.backend.schedule.dto.request.ScheduleRequest.scheduleUpdateRequest;
+import com.example.backend.schedule.dto.response.ScheduleResponse.scheduleDetailResponse;
+import com.example.backend.schedule.dto.response.ScheduleResponse.scheduleInfo;
+import com.example.backend.schedule.dto.response.ScheduleResponse.scheduleItemInfo;
+import com.example.backend.schedule.filter.ScheduleFilter;
+import com.example.backend.scheduleItem.service.ScheduleItemService;
 import com.example.backend.group.entity.Group;
-import com.example.backend.group.repository.GroupRepository;
-import com.example.backend.schedule.dto.request.ScheduleRequest;
-import com.example.backend.schedule.dto.response.ScheduleResponse;
 import com.example.backend.schedule.entity.Schedule;
 import com.example.backend.schedule.entity.ScheduleType;
 import com.example.backend.schedule.repository.ScheduleRepository;
@@ -12,192 +16,119 @@ import com.example.backend.scheduleItem.entity.ScheduleItem;
 import com.example.backend.scheduleItem.repository.ScheduleItemRepository;
 import com.example.backend.user.entity.User;
 import com.example.backend.user.repository.UserRepository;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
-
+import java.time.LocalTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static com.example.backend.common.auth.AuthUtil.getCurrentUserId;
+
+/**
+ * 스케줄 관련 비즈니스 로직을 처리하는 서비스 클래스입니다.
+ * 스케줄의 생성, 조회, 수정, 삭제 및 AI를 활용한 경로 최적화 기능을 제공합니다.
+ */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ScheduleService {
 
     private final ScheduleRepository scheduleRepository;
-    private final GroupRepository groupRepository;
     private final UserRepository userRepository;
     private final ScheduleItemRepository scheduleItemRepository;
+    private final ScheduleFilter scheduleFilter;
+    private final ScheduleItemService scheduleItemService;
+    private final AiService aiService;
+    private final ObjectMapper objectMapper;
 
-    @Value("${openai.api.key}")
-    private String openAiApiKey;
-
-    @Value("${openai.api.url}")
-    private String openAiApiUrl;
-
-    private UUID getCurrentUserId() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new IllegalStateException("인증되지 않은 사용자입니다.");
-        }
-        return UUID.fromString(authentication.getName());
-    }
-
+    /**
+     * 새로운 스케줄을 생성하고 스케줄 아이템들을 저장합니다.
+     *
+     * @param request 생성할 스케줄의 상세 정보가 담긴 {@link ScheduleCreateRequest} 객체.
+     * @return 새로 생성된 스케줄의 ID.
+     */
     @Transactional
-    public UUID createSchedule(ScheduleRequest.scheduleCreateRequest request) {
-        UUID currentUserId = getCurrentUserId();
-        User currentUser = userRepository.findById(currentUserId)
-                .orElseThrow(() -> new IllegalStateException("현재 로그인된 사용자를 찾을 수 없습니다."));
-
-        Group groupEntity = null;
-        if (request.getScheduleType() == ScheduleType.GROUP) {
-            if (request.getGroupId() == null) {
-                throw new IllegalArgumentException("그룹 스케줄 생성 시 groupId는 필수입니다.");
-            }
-            groupEntity = groupRepository.findByIdWithUsers(request.getGroupId())
-                    .orElseThrow(() -> new IllegalArgumentException("그룹을 찾을 수 없습니다."));
-
-            boolean isMember = groupEntity.getUsers().stream()
-                    .anyMatch(user -> user.getUserId().equals(currentUserId));
-            if (!isMember) {
-                throw new IllegalStateException("해당 그룹의 멤버가 아닙니다. 그룹 스케줄을 생성할 수 없습니다.");
-            }
-        } else if (request.getScheduleType() == ScheduleType.PERSONAL) {
-            if (request.getGroupId() != null) {
-                throw new IllegalArgumentException("개인 스케줄 생성 시 groupId는 null이어야 합니다.");
-            }
-        } else {
-            throw new IllegalArgumentException("유효하지 않은 스케줄 타입입니다.");
-        }
-
-        Schedule schedule = Schedule.builder()
-                .scheduleName(request.getScheduleName())
-                .startDate(request.getStartDate())
-                .endDate(request.getEndDate())
-                .budget(request.getBudget())
-                .groupId(groupEntity)
-                .userId(currentUser)
-                .scheduleType(request.getScheduleType())
-                .build();
-
-        Schedule savedSchedule = scheduleRepository.save(schedule);
+    public UUID createSchedule(ScheduleCreateRequest request) {
+        User user = AuthUtil.getCurrentUser(userRepository);
+        Group group = scheduleFilter.validateScheduleRequest(request.getScheduleType(), request.getGroupId());
+        Schedule savedSchedule = scheduleRepository.save(ScheduleCreateRequest.toEntity(request, group, user));
+        List<ScheduleItem> scheduleItems = request.getScheduleItem().stream()
+                .map(itemDto -> ScheduleItem.builder()
+                        .contentId(itemDto.getContentId())
+                        .cost(itemDto.getCost())
+                        .scheduleId(savedSchedule)
+                        .build())
+                .collect(Collectors.toList());
+        scheduleItemService.createItemList(scheduleItems);
         return savedSchedule.getScheduleId();
     }
 
+    /**
+     * 주어진 ID를 가진 스케줄을 찾습니다.
+     *
+     * @param scheduleId 찾을 스케줄의 ID.
+     * @return 주어진 ID에 해당하는 {@link Schedule} 엔티티.
+     * @throws IllegalArgumentException 스케줄을 찾을 수 없는 경우.
+     */
     @Transactional
-    public UUID updateSchedule(ScheduleRequest.scheduleUpdateRequest request) {
-        UUID currentUserId = getCurrentUserId();
-        User currentUser = userRepository.findById(currentUserId)
-                .orElseThrow(() -> new IllegalStateException("현재 로그인된 사용자를 찾을 수 없습니다."));
+    public Schedule findScheduleById(UUID scheduleId) {
+        return scheduleRepository.findById(scheduleId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 스케쥴을 찾을 수 없습니다."));
+    }
 
+    /**
+     * 기존 스케줄의 정보를 업데이트합니다.
+     *
+     * @param request 업데이트할 스케줄의 ID와 새로운 정보가 담긴 {@link scheduleUpdateRequest} 객체.
+     * @return 업데이트된 스케줄의 ID.
+     */
+    @Transactional
+    public UUID updateSchedule(scheduleUpdateRequest request) {
+        UUID currentUserId = getCurrentUserId();
+        scheduleFilter.validateScheduleAccess(request.getScheduleId(), currentUserId);
         Schedule schedule = scheduleRepository.findById(request.getScheduleId())
                 .orElseThrow(() -> new IllegalArgumentException("수정하려는 스케줄을 찾을 수 없습니다."));
-
-        if (schedule.getScheduleType() == ScheduleType.PERSONAL) {
-            if (!schedule.getUserId().getUserId().equals(currentUserId)) {
-                throw new IllegalStateException("개인 스케줄에 대한 수정 권한이 없습니다.");
-            }
-        } else if (schedule.getScheduleType() == ScheduleType.GROUP) {
-            Group groupEntity = groupRepository.findByIdWithUsers(schedule.getGroupId().getGroupId())
-                    .orElseThrow(() -> new IllegalArgumentException("해당 스케줄의 그룹을 찾을 수 없습니다."));
-
-            boolean isMember = groupEntity.getUsers().stream()
-                    .anyMatch(user -> user.getUserId().equals(currentUserId));
-            if (!isMember) {
-                throw new IllegalStateException("그룹 멤버가 아니어서 스케줄을 수정할 수 없습니다.");
-            }
-        } else {
-            throw new IllegalArgumentException("유효하지 않은 스케줄 타입입니다.");
+        if (request.getScheduleType() == ScheduleType.GROUP && request.getGroupId() == null) {
+            throw new IllegalArgumentException("그룹 스케줄 수정 시 groupId는 필수입니다.");
+        } else if (request.getScheduleType() == ScheduleType.PERSONAL && request.getGroupId() != null) {
+            throw new IllegalArgumentException("개인 스케줄 수정 시 groupId는 null이어야 합니다.");
         }
-
-        Group groupEntity = null;
-        if (request.getScheduleType() == ScheduleType.GROUP) {
-            if (request.getGroupId() == null) {
-                throw new IllegalArgumentException("그룹 스케줄 수정 시 groupId는 필수입니다.");
-            }
-            groupEntity = groupRepository.findByIdWithUsers(request.getGroupId())
-                    .orElseThrow(() -> new IllegalArgumentException("그룹을 찾을 수 없습니다."));
-
-            boolean isMember = groupEntity.getUsers().stream()
-                    .anyMatch(user -> user.getUserId().equals(currentUserId));
-            if (!isMember) {
-                throw new IllegalStateException("해당 그룹의 멤버가 아닙니다.");
-            }
-        } else if (request.getScheduleType() == ScheduleType.PERSONAL) {
-            if (request.getGroupId() != null) {
-                throw new IllegalArgumentException("개인 스케줄 수정 시 groupId는 null이어야 합니다.");
-            }
-        } else {
-            throw new IllegalArgumentException("유효하지 않은 스케줄 타입입니다.");
-        }
-
-        schedule.updateSchedule(
-                request.getScheduleName(),
-                request.getStartDate(),
-                request.getEndDate(),
-                request.getBudget(),
-                groupEntity,
-                request.getScheduleType()
-        );
-
         scheduleRepository.save(schedule);
         return schedule.getScheduleId();
     }
 
+    /**
+     * 주어진 ID를 가진 스케줄을 삭제합니다.
+     *
+     * @param scheduleId 삭제할 스케줄의 ID.
+     */
     @Transactional
     public void deleteSchedule(UUID scheduleId) {
         UUID currentUserId = getCurrentUserId();
-        User currentUser = userRepository.findById(currentUserId)
-                .orElseThrow(() -> new IllegalStateException("현재 로그인된 사용자를 찾을 수 없습니다."));
-
-        Schedule schedule = scheduleRepository.findById(scheduleId)
-                .orElseThrow(() -> new IllegalArgumentException("삭제하려는 스케줄을 찾을 수 없습니다."));
-
-        if (schedule.getScheduleType() == ScheduleType.PERSONAL) {
-            if (!schedule.getUserId().getUserId().equals(currentUserId)) {
-                throw new IllegalStateException("개인 스케줄에 대한 삭제 권한이 없습니다.");
-            }
-        } else if (schedule.getScheduleType() == ScheduleType.GROUP) {
-            Group group = groupRepository.findByIdWithUsers(schedule.getGroupId().getGroupId())
-                    .orElseThrow(() -> new IllegalArgumentException("해당 스케줄의 그룹을 찾을 수 없습니다."));
-
-            boolean isMember = group.getUsers().stream()
-                    .anyMatch(user -> user.getUserId().equals(currentUserId));
-            if (!isMember) {
-                throw new IllegalStateException("그룹 멤버가 아니어서 스케줄을 삭제할 수 없습니다.");
-            }
-        } else {
-            throw new IllegalArgumentException("유효하지 않은 스케줄 타입입니다.");
-        }
-
-        scheduleRepository.delete(schedule);
+        scheduleFilter.validateScheduleAccess(scheduleId, currentUserId);
+        scheduleRepository.deleteById(scheduleId);
     }
 
+    /**
+     * 현재 사용자의 스케줄 목록을 조회합니다.
+     *
+     * @param groupId 그룹 ID. null일 경우 개인 스케줄을 조회하고, 아닐 경우 해당 그룹의 스케줄을 조회합니다.
+     * @return 조회된 스케줄 정보 목록.
+     */
     @Transactional
-    public List<ScheduleResponse.scheduleInfo> getSchedules(UUID groupId) {
+    public List<scheduleInfo> getSchedules(UUID groupId) {
         UUID currentUserId = getCurrentUserId();
         User currentUser = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new IllegalStateException("현재 로그인된 사용자를 찾을 수 없습니다."));
-
         List<Schedule> schedules;
-
         if (groupId != null) {
-            Group groupEntity = groupRepository.findByIdWithUsers(groupId)
-                    .orElseThrow(() -> new IllegalArgumentException("그룹을 찾을 수 없습니다."));
-
-            boolean isMember = groupEntity.getUsers().stream()
-                    .anyMatch(user -> user.getUserId().equals(currentUserId));
-            if (!isMember) {
-                throw new IllegalStateException("해당 그룹의 멤버가 아닙니다. 그룹 스케줄을 조회할 수 없습니다.");
-            }
+            Group groupEntity = scheduleFilter.validateGroupAccess(groupId, currentUserId);
             schedules = scheduleRepository.findAllByGroupId(groupEntity);
             schedules = schedules.stream()
                     .filter(s -> s.getScheduleType() == ScheduleType.GROUP)
@@ -212,8 +143,7 @@ public class ScheduleService {
                             ? schedule.getGroupId().getGroupId() : null;
                     String responseGroupName = (schedule.getScheduleType() == ScheduleType.GROUP && schedule.getGroupId() != null)
                             ? schedule.getGroupId().getGroupName() : null;
-
-                    return ScheduleResponse.scheduleInfo.builder()
+                    return scheduleInfo.builder()
                             .scheduleId(schedule.getScheduleId())
                             .scheduleName(schedule.getScheduleName())
                             .startDate(schedule.getStartDate())
@@ -230,37 +160,26 @@ public class ScheduleService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * 주어진 ID를 가진 스케줄의 상세 정보를 조회합니다.
+     *
+     * @param scheduleId 상세 정보를 조회할 스케줄의 ID.
+     * @return 스케줄의 상세 정보와 포함된 스케줄 아이템 목록이 담긴 {@link scheduleDetailResponse} 객체.
+     */
     @Transactional
-    public ScheduleResponse.scheduleDetailResponse getScheduleDetail(UUID scheduleId) {
+    public scheduleDetailResponse getScheduleDetail(UUID scheduleId) {
         UUID currentUserId = getCurrentUserId();
-        User currentUser = userRepository.findById(currentUserId)
-                .orElseThrow(() -> new IllegalStateException("현재 로그인된 사용자를 찾을 수 없습니다."));
+        scheduleFilter.validateScheduleAccess(scheduleId, currentUserId);
 
         Schedule schedule = scheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 스케줄을 찾을 수 없습니다."));
 
-        if (schedule.getScheduleType() == ScheduleType.PERSONAL) {
-            if (!schedule.getUserId().getUserId().equals(currentUserId)) {
-                throw new IllegalStateException("개인 스케줄에 접근할 수 없습니다.");
-            }
-        } else if (schedule.getScheduleType() == ScheduleType.GROUP) {
-            Group group = groupRepository.findByIdWithUsers(schedule.getGroupId().getGroupId())
-                    .orElseThrow(() -> new IllegalArgumentException("해당 스케줄의 그룹을 찾을 수 없습니다."));
-            boolean isMember = group.getUsers().stream()
-                    .anyMatch(user -> user.getUserId().equals(currentUserId));
-            if (!isMember) {
-                throw new IllegalStateException("해당 그룹의 멤버가 아닙니다. 스케줄을 조회할 수 없습니다.");
-            }
-        } else {
-            throw new IllegalArgumentException("알 수 없는 스케쥴 타입입니다.");
-        }
+        List<ScheduleItem> scheduleItems = scheduleItemRepository.findAllByScheduleId_ScheduleId(scheduleId);
 
-        List<ScheduleItem> scheduleItems = scheduleItemRepository.findAllByScheduleId(schedule);
-
-        List<ScheduleResponse.scheduleItemInfo> itemsDto = scheduleItems.stream()
-                .map(item -> ScheduleResponse.scheduleItemInfo.builder()
+        List<scheduleItemInfo> itemsDto = scheduleItems.stream()
+                .map(item -> scheduleItemInfo.builder()
                         .scheduleItemId(item.getScheduleItemId())
-                        .placeId(item.getPlaceId())
+                        .placeId(item.getContentId())
                         .dayNumber(item.getDayNumber())
                         .startTime(item.getStartTime())
                         .endTime(item.getEndTime())
@@ -269,7 +188,7 @@ public class ScheduleService {
                         .build())
                 .collect(Collectors.toList());
 
-        return ScheduleResponse.scheduleDetailResponse.builder()
+        return scheduleDetailResponse.builder()
                 .scheduleId(schedule.getScheduleId())
                 .scheduleName(schedule.getScheduleName())
                 .startDate(schedule.getStartDate())
@@ -281,133 +200,72 @@ public class ScheduleService {
                 .build();
     }
 
-    public Mono<ScheduleResponse.OptimizeRouteResponse> optimizeRoute(UUID scheduleId, ScheduleRequest.OptimizeRouteRequest request) {
+    /**
+     * AI 서비스를 활용하여 스케줄의 경로를 최적화합니다.
+     * <p>
+     * AI로부터 최적화된 경로(JSON 형식)를 받아와 스케줄 아이템들을 업데이트하고 DB에 저장합니다.
+     *
+     * @param scheduleId 최적화할 스케줄의 ID.
+     * @return 비동기 작업의 완료를 나타내는 {@link Mono<Void>}.
+     */
+    @Transactional
+    public Mono<Void> optimizeRoute(UUID scheduleId) {
+        UUID currentUserId = getCurrentUserId();
+        scheduleFilter.validateScheduleAccess(scheduleId, currentUserId);
+
         Schedule schedule = scheduleRepository.findById(scheduleId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 스케쥴을 찾을 수 없습니다."));
-        List<ScheduleItem> scheduleItems = scheduleItemRepository.findAllByScheduleId(schedule);
+                .orElseThrow(() -> new IllegalArgumentException("해당 스케줄을 찾을 수 없습니다."));
 
-        if (scheduleItems.isEmpty()) {
-            throw new IllegalArgumentException("해당 스케줄에 아이템이 없습니다.");
+        List<ScheduleItem> items = scheduleItemRepository.findAllByScheduleId_ScheduleId(scheduleId);
+
+        if (items.isEmpty()) {
+            return Mono.error(new IllegalArgumentException("해당 스케줄에 아이템이 없습니다."));
         }
 
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.registerModule(new JavaTimeModule());
-        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        return aiService.getOptimizedRouteJson(schedule.getScheduleId(), schedule.getStartDate(), schedule.getEndDate(), items)
+                .flatMap(optimizedJson -> {
+                    try {
+                        Map<String, Object> responseMap = objectMapper.readValue(optimizedJson, new TypeReference<>() {});
+                        List<Map<String, Object>> optimizedItems = (List<Map<String, Object>>) responseMap.get("ScheduleItems");
 
-        List<ScheduleResponse.scheduleItemInfo> scheduleItemsDto = scheduleItems.stream()
-                .map(item -> ScheduleResponse.scheduleItemInfo.builder()
-                        .scheduleItemId(item.getScheduleItemId())
-                        .placeId(item.getPlaceId())
-                        .dayNumber(item.getDayNumber())
-                        .startTime(item.getStartTime())
-                        .endTime(item.getEndTime())
-                        .memo(item.getMemo())
-                        .cost(item.getCost())
-                        .build())
-                .collect(Collectors.toList());
-
-        String preferencesJson;
-        String itemsJson;
-
-        try {
-            preferencesJson = mapper.writeValueAsString(request.getPreferences());
-            itemsJson = mapper.writeValueAsString(scheduleItemsDto);
-        } catch (Exception e) {
-            throw new RuntimeException("JSON 직렬화 실패", e);
-        }
-
-        String prompt = String.format("""
-너는 여행 경로 최적화 전문가야.
-아래 정보를 참고해서 일정 아이템들을 효율적으로 순서를 정렬하고 최적 경로를 추천해.
-각 아이템이 어느 '몇일차(dayNumber)'에 속하는지도 출력해줘.
-
-📌 스케줄 ID: %s
-📌 최적화 타입: %s
-📌 선호사항: %s
-📌 현재 스케줄 아이템 리스트:
-%s
-
-아래 JSON 구조를 절대 변경하지 말고, 다른 필드는 절대 넣지 말고,
-정확하게 아래의 JSON 형식으로만 출력해줘:
-{
-  "scheduleId": "스케줄 ID",
-  "optimizeRoute": [
-    {
-      "order": 1,
-      "location": "장소 UUID",
-      "estimatedTimeMinutes": 30,
-      "distanceKm": 12.5,
-      "dayNumber": 1
-    }
-  ]
-}
-
-❗️ 절대 설명 문장 쓰지 말고 JSON만 출력해.
-""", scheduleId, request.getOptimizationType(), preferencesJson, itemsJson);
-
-        Map<String, Object> body = Map.of(
-                "model", "gpt-3.5-turbo",
-                "messages", List.of(
-                        Map.of("role", "user", "content", prompt)
-                )
-        );
-
-        return WebClient.builder()
-                .baseUrl(openAiApiUrl)
-                .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + openAiApiKey)
-                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .build()
-                .post()
-                .bodyValue(body)
-                .retrieve()
-                .bodyToMono(Map.class)
-                .map(response -> {
-                    List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
-                    if (choices != null && !choices.isEmpty()) {
-                        Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
-                        if (message != null) {
-                            String content = (String) message.get("content");
-                            System.out.println("GPT 응답: " + content);
-
-                            if (!content.trim().startsWith("{")) {
-                                throw new RuntimeException("GPT 응답이 JSON 형식이 아님: " + content);
-                            }
-
-                            try {
-                                ScheduleResponse.OptimizeRouteResponse result = mapper.readValue(content, ScheduleResponse.OptimizeRouteResponse.class);
-
-                                List<ScheduleItem> scheduleItemsFull = scheduleItemRepository.findAllByScheduleId(schedule);
-
-                                List<ScheduleResponse.RouteStep> enhancedRoute = new ArrayList<>();
-                                for (ScheduleResponse.RouteStep step : result.getOptimizeRoute()) {
-                                    Optional<ScheduleItem> matchingItem = scheduleItemsFull.stream()
-                                            .filter(item -> item.getPlaceId().toString().equals(step.getLocation()))
-                                            .findFirst();
-
-                                    Integer dayNumber = matchingItem.map(ScheduleItem::getDayNumber).orElse(null);
-
-                                    ScheduleResponse.RouteStep stepWithDay = ScheduleResponse.RouteStep.builder()
-                                            .order(step.getOrder())
-                                            .location(step.getLocation())
-                                            .estimatedTimeMinutes(step.getEstimatedTimeMinutes())
-                                            .distanceKm(step.getDistanceKm())
-                                            .dayNumber(dayNumber)
-                                            .build();
-
-                                    enhancedRoute.add(stepWithDay);
-                                }
-
-                                return ScheduleResponse.OptimizeRouteResponse.builder()
-                                        .scheduleId(result.getScheduleId())
-                                        .optimizeRoute(enhancedRoute)
-                                        .build();
-
-                            } catch (Exception e) {
-                                throw new RuntimeException("GPT 응답 JSON 파싱 실패: " + content, e);
-                            }
+                        if (optimizedItems == null) {
+                            return Mono.error(new RuntimeException("AI 응답에 'ScheduleItems' 필드가 없습니다."));
                         }
+
+                        List<ScheduleItem> updatedItems = new ArrayList<>();
+
+                        for (Map<String, Object> itemData : optimizedItems) {
+                            UUID contentId = UUID.fromString((String) itemData.get("contentId"));
+                            int order = (int) itemData.get("order");
+                            int dayNumber = (int) itemData.get("dayNumber");
+                            String startTimeStr = (String) itemData.get("start_time");
+                            String endTimeStr = (String) itemData.get("end_time");
+
+                            items.stream()
+                                    .filter(item -> item.getContentId().equals(contentId))
+                                    .findFirst()
+                                    .ifPresent(originalItem -> {
+                                        ScheduleItem newItem = ScheduleItem.builder()
+                                                .scheduleItemId(originalItem.getScheduleItemId())
+                                                .contentId(originalItem.getContentId())
+                                                .memo(originalItem.getMemo())
+                                                .cost(originalItem.getCost())
+                                                .scheduleId(originalItem.getScheduleId())
+                                                .order(order)
+                                                .dayNumber(dayNumber)
+                                                .startTime(LocalTime.parse(startTimeStr))
+                                                .endTime(LocalTime.parse(endTimeStr))
+                                                .build();
+
+                                        updatedItems.add(newItem);
+                                    });
+                        }
+
+                        scheduleItemRepository.saveAll(updatedItems);
+                        return Mono.empty();
+                    } catch (JsonProcessingException e) {
+                        return Mono.error(new RuntimeException("AI 응답 JSON 파싱에 실패했습니다.", e));
                     }
-                    throw new RuntimeException("OpenAI 응답에서 결과를 찾을 수 없습니다.");
                 });
     }
 }

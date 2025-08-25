@@ -63,15 +63,5 @@ public class Schedule {
     @JoinColumn(name = "cart_id", referencedColumnName = "cart_id", nullable = false)
     private Cart cartId;
 
-    public void updateSchedule(String name, LocalDate start, LocalDate end, BigInteger budget, Group group, ScheduleType type) {
-        this.scheduleName = name;
-        this.startDate = start;
-        this.endDate = end;
-        this.budget = budget;
-        this.groupId = group;
-        this.scheduleType = type;
-    }
-
-
 }
 

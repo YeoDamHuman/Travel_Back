@@ -20,4 +20,5 @@ public interface ScheduleRepository extends JpaRepository<Schedule, UUID> {
     List<Schedule> findAllByUserIdAndScheduleType(User userId, ScheduleType scheduleType);
 
 
+    Schedule getSchedulesByScheduleId(UUID scheduleId);
 }

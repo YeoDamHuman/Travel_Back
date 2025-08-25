@@ -48,12 +48,6 @@ public class UserService {
                 .build();
 
         User savedUser = userRepository.save(user);
-
-        Cart cart = Cart.builder()
-                .user(savedUser)
-                .region("서울")
-                .build();
-        cartRepository.save(cart);
     }
 
     // 2️⃣ 유저정보 변경 로직

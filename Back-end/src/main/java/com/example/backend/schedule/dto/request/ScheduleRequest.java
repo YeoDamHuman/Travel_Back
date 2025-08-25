@@ -1,12 +1,16 @@
 package com.example.backend.schedule.dto.request;
 
+import com.example.backend.group.entity.Group;
+import com.example.backend.schedule.entity.Schedule;
 import com.example.backend.schedule.entity.ScheduleType;
+import com.example.backend.user.entity.User;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import java.math.BigInteger;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 public class ScheduleRequest {
@@ -14,7 +18,7 @@ public class ScheduleRequest {
     @Getter
     @Builder
     @AllArgsConstructor
-    public static class scheduleCreateRequest {
+    public static class ScheduleCreateRequest {
         @Schema(description = "스케줄 이름", example = "여름 휴가 계획")
         private String scheduleName;
         @Schema(description = "시작 날짜 (YYYY-MM-DD)", example = "2025-07-01")
@@ -27,6 +31,40 @@ public class ScheduleRequest {
         private UUID groupId;
         @Schema(description = "스케줄 타입 (PERSONAL, GROUP 중 하나)", example = "GROUP")
         private ScheduleType scheduleType;
+        @Schema(description = "스케줄 스타일 (여행 목적 등)", example = "Shopping")
+        private String scheduleStyle;
+        @Schema(description = "출발 장소", example = "서울역")
+        private String startPlace;
+        @Schema(description = "출발 시간", example = "09:00")
+        private String startTime;
+        @Schema(description = "일정 아이템 목록")
+        private List<Items> scheduleItem;
+
+        public static Schedule toEntity(ScheduleCreateRequest request, Group group, User user) {
+            return Schedule.builder()
+                    .scheduleId(null)
+                    .scheduleName(request.getScheduleName())
+                    .startDate(request.startDate)
+                    .endDate(request.endDate)
+                    .createdAt(null)
+                    .updatedAt(null)
+                    .budget(request.budget)
+                    .groupId(group)
+                    .userId(user)
+                    .scheduleType(request.scheduleType)
+                    .cartId(null)
+                    .build();
+        }
+
+        @Getter
+        @Builder
+        @AllArgsConstructor
+        public static class Items {
+            @Schema(description = "콘텐츠 ID", example = "abcd1234")
+            private UUID contentId;
+            @Schema(description = "비용", example = "12000")
+            private int cost;
+        }
     }
 
     @Getter
