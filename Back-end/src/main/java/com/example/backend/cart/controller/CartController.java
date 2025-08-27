@@ -1,12 +1,17 @@
 package com.example.backend.cart.controller;
 
-import com.example.backend.cart.dto.request.AddTourRequest;
+import com.example.backend.cart.dto.request.CartRequest;
 import com.example.backend.cart.dto.response.CartResponse;
 import com.example.backend.cart.service.CartService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -16,13 +21,14 @@ import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/cart")
-@Tag(name = "CartAPI", description = "장바구니 API")
+@RequestMapping
+@Tag(name = "CartAPI", description = "장바구니 및 투어 관리 API")
+@Slf4j
 public class CartController {
 
     private final CartService cartService;
 
-    @GetMapping
+    @GetMapping("/cart")
     @Operation(summary = "장바구니 조회", description = "사용자의 장바구니 내용 조회",
             security = @SecurityRequirement(name = "JWT"))
     public ResponseEntity<CartResponse.CartDetailResponse> getCart(
@@ -31,17 +37,18 @@ public class CartController {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/tours")
+    @PostMapping("/cart/tours")
     @Operation(summary = "장바구니에 투어 추가", description = "장바구니에 새로운 투어 추가",
             security = @SecurityRequirement(name = "JWT"))
     public ResponseEntity<CartResponse.AddTourResponse> addTourToCart(
             @AuthenticationPrincipal UserDetails userDetails,
-            @RequestBody AddTourRequest request) {
-        CartResponse.AddTourResponse response = cartService.addTourToCart(userDetails.getUsername(), request);
+            @RequestBody CartResponse.TourSearchResponse tourResponse) {
+        CartResponse.AddTourResponse response = cartService.addTourToCart(userDetails.getUsername(), tourResponse);
         return ResponseEntity.ok(response);
     }
 
-    @DeleteMapping("/tours/{tourId}")
+
+    @DeleteMapping("/cart/tours/{tourId}")
     @Operation(summary = "장바구니에서 투어 삭제",
             description = "장바구니에서 특정 투어 삭제",
             security = @SecurityRequirement(name = "JWT"))
@@ -52,7 +59,7 @@ public class CartController {
         return ResponseEntity.noContent().build();
     }
 
-    @DeleteMapping("/tours")
+    @DeleteMapping("/cart/tours")
     @Operation(summary = "장바구니 전체 비우기",
             description = "장바구니의 모든 투어 삭제",
             security = @SecurityRequirement(name = "JWT"))
@@ -132,5 +139,4 @@ public class CartController {
                 userDetails.getUsername(), contentId);
         return ResponseEntity.ok(response);
     }
-
 }

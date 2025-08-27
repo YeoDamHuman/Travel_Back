@@ -11,7 +11,7 @@ import java.util.UUID;
 @Repository
 public interface CartRepository extends JpaRepository<Cart, UUID> {
 
-    Optional<Cart> findByUser(User user);
+    Optional<Cart> findByUserId(User user);
 
-    boolean existsByUser(User user);
+    boolean existsByUserId(User user);
 }
