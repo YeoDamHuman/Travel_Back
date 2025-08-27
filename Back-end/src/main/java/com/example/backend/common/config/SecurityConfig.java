@@ -47,6 +47,7 @@ public class SecurityConfig {
                                 "/tour/search",
                                 "/tour/detail/**",
                                 "/tour/search/theme",
+                                "/places/**",
                                 "/file/**",
                                 "/auth/**",
                                 "/schedule/**",

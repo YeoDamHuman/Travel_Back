@@ -139,4 +139,36 @@ public class CartController {
                 userDetails.getUsername(), contentId);
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/places/region/{regionCode}")
+    @Operation(summary = "지역별 장소 검색", description = "지역 코드로 해당 지역의 장소들 검색")
+    public ResponseEntity<Page<CartResponse.TourSearchResponse>> getPlacesByRegion(
+            @Parameter(description = "지역 코드", example = "1") 
+            @PathVariable String regionCode,
+            @Parameter(description = "페이지 번호", example = "0") 
+            @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "페이지 크기", example = "20") 
+            @RequestParam(defaultValue = "20") int size) {
+        
+        Pageable pageable = PageRequest.of(page, size);
+        Page<CartResponse.TourSearchResponse> response = cartService.searchPlacesByRegion(regionCode, pageable);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/places/region/{regionCode}/theme/{theme}")
+    @Operation(summary = "지역 및 테마별 장소 검색", description = "지역 코드와 테마로 장소들 검색")
+    public ResponseEntity<Page<CartResponse.TourSearchResponse>> getPlacesByRegionAndTheme(
+            @Parameter(description = "지역 코드", example = "1") 
+            @PathVariable String regionCode,
+            @Parameter(description = "테마", example = "관광지") 
+            @PathVariable String theme,
+            @Parameter(description = "페이지 번호", example = "0") 
+            @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "페이지 크기", example = "20") 
+            @RequestParam(defaultValue = "20") int size) {
+        
+        Pageable pageable = PageRequest.of(page, size);
+        Page<CartResponse.TourSearchResponse> response = cartService.searchPlacesByRegionAndTheme(regionCode, theme, pageable);
+        return ResponseEntity.ok(response);
+    }
 }

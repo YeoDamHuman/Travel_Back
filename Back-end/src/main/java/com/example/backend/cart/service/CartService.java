@@ -181,6 +181,16 @@ public class CartService {
     }
 
     @Transactional(readOnly = true)
+    public Page<CartResponse.TourSearchResponse> searchPlacesByRegion(String regionCode, Pageable pageable) {
+        return tourApiClient.searchPlacesByRegion(regionCode, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<CartResponse.TourSearchResponse> searchPlacesByRegionAndTheme(String regionCode, String theme, Pageable pageable) {
+        return tourApiClient.searchPlacesByRegionAndTheme(regionCode, theme, pageable);
+    }
+
+    @Transactional(readOnly = true)
     public CartResponse.TourDetailResponse getTourDetail(String contentId, String userIdString) {
         CartResponse.TourDetailResponse detailResponse = tourApiClient.getTourDetail(contentId);
         
