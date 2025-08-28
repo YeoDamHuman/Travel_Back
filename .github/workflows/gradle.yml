@@ -58,7 +58,7 @@ jobs:
           name: spring-boot-app # 업로드했던 아티팩트 이름과 동일
           path: ./ # 현재 작업 디렉토리(./)로 다운로드
 
-      # 2. (수정됨) EC2에 배포 디렉토리를 준비하고 권한을 설정합니다.
+      # 2. EC2에 배포 디렉토리를 준비하고 권한을 설정합니다.
       - name: Setup directory and permissions on EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -90,7 +90,11 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           script: |
-            # EC2 서버에서 실행될 스크립트
+            # Java 17 설치
+            echo "☕️ Java 17을 설치하거나 확인합니다..."
+            sudo apt-get update
+            sudo apt-get install -y openjdk-17-jdk
+
             DEPLOY_PATH="/home/ubuntu/app"
             cd ${DEPLOY_PATH}
 
@@ -104,9 +108,7 @@ jobs:
             fi
 
             echo "🔄 새로운 JAR 파일로 교체합니다."
-            # 기존 app.jar 삭제
             rm -f app.jar
-            # 방금 SCP로 복사된 최신 JAR 파일의 이름을 app.jar로 변경
             NEWEST_JAR=$(ls -t *.jar | head -n 1)
             if [ -z "$NEWEST_JAR" ]; then
               echo "❌ 배포할 JAR 파일을 찾을 수 없습니다."
@@ -115,7 +117,18 @@ jobs:
             mv "${NEWEST_JAR}" app.jar
 
             echo "🚀 새로운 Spring Boot 애플리케이션을 시작합니다..."
-            # nohup으로 백그라운드 실행 및 로그 리디렉션
-            nohup java -jar app.jar > /dev/null 2>&1 &
+            # 실행 로그를 app.log 파일에 기록
+            nohup java -jar app.jar > app.log 2>&1 &
 
-            echo "✅ 배포 완료! 애플리케이션이 백그라운드에서 실행됩니다."
+            # 애플리케이션이 정상적으로 실행되었는지 확인
+            echo "⏱️ 애플리케이션 시작을 10초간 기다립니다..."
+            sleep 10
+            
+            echo "🔍 애플리케이션 실행 상태를 확인합니다..."
+            ps -ef | grep app.jar | grep -v grep
+            if [ $? -eq 0 ]; then
+                echo "✅ 배포 완료! 애플리케이션이 백그라운드에서 실행 중입니다."
+            else
+                echo "❌ 애플리케이션이 시작되지 않았습니다. EC2 서버의 ${DEPLOY_PATH}/app.log 파일을 확인해주세요."
+                exit 1
+            fi
