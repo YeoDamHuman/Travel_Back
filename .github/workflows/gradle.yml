@@ -58,7 +58,19 @@ jobs:
           name: spring-boot-app # 업로드했던 아티팩트 이름과 동일
           path: ./ # 현재 작업 디렉토리(./)로 다운로드
 
-      # 2. SCP를 사용해 EC2 서버로 JAR 파일을 복사합니다.
+      # 2. (수정됨) EC2에 배포 디렉토리를 준비하고 권한을 설정합니다.
+      - name: Setup directory and permissions on EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          script: |
+            sudo mkdir -p /home/ubuntu/app
+            sudo chown -R ${{ secrets.EC2_USERNAME }}:${{ secrets.EC2_USERNAME }} /home/ubuntu/app
+
+      # 3. SCP를 사용해 EC2 서버로 JAR 파일을 복사합니다.
       - name: Copy JAR to EC2
         uses: appleboy/scp-action@v0.1.4
         with:
@@ -69,7 +81,7 @@ jobs:
           source: "*.jar" # 현재 디렉토리의 모든 .jar 파일을 전송
           target: "/home/ubuntu/app" # EC2의 배포 경로
 
-      # 3. SSH로 EC2에 접속해 배포 스크립트를 실행합니다.
+      # 4. SSH로 EC2에 접속해 배포 스크립트를 실행합니다.
       - name: Deploy Spring Boot App on EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
