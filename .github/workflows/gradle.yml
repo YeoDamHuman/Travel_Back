@@ -2,36 +2,106 @@ name: Java CI with Gradle
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main" ] # main 브랜치에 푸시될 때 워크플로우 실행
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main" ] # main 브랜치로 풀 리퀘스트가 생성/업데이트될 때 워크플로우 실행
 
 jobs:
   build:
-
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest # 최신 Ubuntu 환경에서 빌드 작업 실행
     permissions:
-      contents: read
+      contents: read # 리포지토리 내용을 읽을 수 있는 권한 부여
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v4 # GitHub 리포지토리를 워크플로우 러너로 체크아웃
     - name: Set up JDK 17
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v4 # JDK 17 설정
       with:
         java-version: '17'
-        distribution: 'temurin'
+        distribution: 'temurin' # Adoptium Temurin 배포판 사용
 
     - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@417ae3ccd767c252f5661f1ace9f835f9654f2b5 # v3.1.0
+      uses: gradle/actions/setup-gradle@417ae3ccd767c252f5661f1ace9f835f9654f2b5 # Gradle 환경 설정 (v3.1.0)
 
     - name: Grant execute permission for gradlew
-      # 'gradlew' 파일이 실제 존재하는 하위 디렉토리(예: 'my-app' 또는 'backend')로 작업 디렉토리를 변경합니다.
-      # 프로젝트 구조에 맞게 'your-project-subdirectory'를 실제 경로로 바꿔주세요.
-      working-directory: ./Back-end # <-- 여기에 경로 추가
-      run: chmod +x gradlew
+      # 'gradlew' 파일이 실제 존재하는 하위 디렉토리로 작업 디렉토리를 변경합니다.
+      # 프로젝트 구조에 맞게 './Back-end' 경로를 확인/수정해주세요.
+      working-directory: ./Back-end
+      run: chmod +x gradlew # gradlew 스크립트에 실행 권한 부여
 
     - name: Build with Gradle Wrapper
-      # 'gradlew' 파일이 실제 존재하는 하위 디렉토리(예: 'my-app' 또는 'backend')로 작업 디렉토리를 변경합니다.
-      # 프로젝트 구조에 맞게 'your-project-subdirectory'를 실제 경로로 바꿔주세요.
-      working-directory: ./Back-end # <-- 여기에 경로 추가
-      run: ./gradlew build
+      # 'gradlew' 파일이 실제 존재하는 하위 디렉토리로 작업 디렉토리를 변경합니다.
+      # 프로젝트 구조에 맞게 './Back-end' 경로를 확인/수정해주세요.
+      working-directory: ./Back-end
+      run: ./gradlew build # Gradle Wrapper를 사용하여 프로젝트 빌드
+
+  deploy:
+    runs-on: ubuntu-latest # 최신 Ubuntu 환경에서 배포 작업 실행
+    needs: build # 'build' 작업이 성공해야만 이 'deploy' 작업이 실행됩니다.
+    # 'main' 브랜치에 'push' 이벤트가 발생했을 때만 배포 작업을 실행합니다.
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: read # 리포지토리 내용을 읽을 수 있는 권한 부여 (SSH Action에 필요)
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        # 빌드된 JAR 파일을 EC2로 전송하기 위해 리포지토리를 다시 체크아웃합니다.
+        # GitHub Actions의 작업 공간에서 빌드된 아티팩트를 직접 사용하는 대신,
+        # 다시 체크아웃하여 SSH 전송을 위한 파일 경로를 쉽게 확보합니다.
+
+      - name: Deploy Spring Boot App to EC2 via SSH
+        uses: appleboy/ssh-action@v1.0.3 # SSH 접속을 위한 GitHub Action을 사용합니다.
+        with:
+          host: ${{ secrets.EC2_HOST }} # EC2 인스턴스의 공용 IP 또는 DNS를 GitHub Secrets에 저장하세요.
+          username: ${{ secrets.EC2_USERNAME }} # EC2 인스턴스에 접속할 사용자 이름(예: ubuntu, ec2-user)을 GitHub Secrets에 저장하세요.
+          key: ${{ secrets.EC2_SSH_KEY }} # EC2 인스턴스의 SSH 프라이빗 키 내용을 GitHub Secrets에 저장하세요.
+          port: 22 # EC2 인스턴스의 SSH 포트입니다. 기본값은 22입니다.
+          script: |
+            # 1. 기존 Spring Boot 애플리케이션 프로세스 종료
+            # 기본적으로 Spring Boot는 8080 포트를 사용합니다. 실제 애플리케이션 포트로 변경하세요.
+            echo "🔥 기존 Spring Boot 애플리케이션을 종료합니다 (포트 8080)..."
+            # sudo lsof -t -i:8080 명령으로 해당 포트의 PID를 찾고 kill 합니다.
+            # lsof가 프로세스를 찾지 못했을 경우 오류 없이 다음 단계로 진행하도록 '|| echo ""'를 추가했습니다.
+            sudo kill -9 $(sudo lsof -t -i:8080 || echo "")
+
+            # 2. 애플리케이션 배포 디렉토리로 이동 및 기존 JAR 파일 삭제
+            # EC2 인스턴스에 애플리케이션이 배포될 경로를 지정합니다. 이 디렉토리는 미리 생성해두는 것이 좋습니다.
+            # 만약 디렉토리가 없다면 생성 후 이동합니다.
+            DEPLOY_PATH="/home/ubuntu/app" # EC2 내의 배포 경로를 지정합니다. 필요에 따라 변경하세요.
+            echo "➡️ 배포 경로 ${DEPLOY_PATH}로 이동합니다."
+            if [ ! -d "${DEPLOY_PATH}" ]; then
+              echo "   배포 디렉토리 ${DEPLOY_PATH}가 존재하지 않아 생성합니다."
+              sudo mkdir -p "${DEPLOY_PATH}"
+            fi
+            cd "${DEPLOY_PATH}"
+
+            echo "🗑️ 기존 'app.jar' 파일을 삭제합니다."
+            rm -f app.jar
+
+            # 3. 새로운 JAR 파일 복사
+            # GitHub Actions 워크플로우 러너의 작업 공간에서 빌드된 .jar 파일을 EC2로 복사합니다.
+            # 'your-repo-name'을 실제 GitHub 저장소 이름으로 **반드시 변경해야 합니다.**
+            # 백엔드 프로젝트 내의 build/libs 경로에 있는 최신 JAR 파일을 복사합니다.
+            # .jar 파일명이 고정적이지 않을 수 있으므로, 와일드카드 (*)를 사용하여 가장 최근에 빌드된 파일을 찾습니다.
+            # 예시: /home/runner/work/my-repo/my-repo/Back-end/build/libs/backend-0.0.1-SNAPSHOT.jar
+            SOURCE_JAR="/home/runner/work/your-repo-name/your-repo-name/Back-end/build/libs/*.jar"
+            
+            # 여러 개의 .jar 파일이 있을 경우 (일반적인 빌드에서는 드물지만), 가장 최근 것을 선택
+            JAR_FILE=$(ls -t ${SOURCE_JAR} 2>/dev/null | head -n 1)
+
+            if [ -z "$JAR_FILE" ]; then
+              echo "❌ 빌드된 JAR 파일을 찾을 수 없습니다: ${SOURCE_JAR}"
+              exit 1 # JAR 파일을 찾지 못하면 배포 실패
+            fi
+
+            echo "📥 새로운 JAR 파일 '${JAR_FILE}'을 ${DEPLOY_PATH}로 복사합니다."
+            cp "${JAR_FILE}" app.jar
+            
+            # 4. 새로운 Spring Boot 애플리케이션 실행 (백그라운드에서 실행)
+            # 'nohup'과 '&'를 사용하여 SSH 세션이 끊겨도 애플리케이션이 계속 실행되도록 합니다.
+            # 표준 출력/오류를 /dev/null로 리다이렉션하여 세션에 메시지가 남지 않게 합니다.
+            # 만약 로그를 파일로 남기고 싶다면 '> ${DEPLOY_PATH}/app.log 2>&1' 등으로 변경할 수 있습니다.
+            echo "🚀 새로운 Spring Boot 애플리케이션을 시작합니다..."
+            nohup java -jar app.jar > /dev/null 2>&1 < /dev/null &
+            echo "✅ 배포 완료! 애플리케이션이 백그라운드에서 실행됩니다."

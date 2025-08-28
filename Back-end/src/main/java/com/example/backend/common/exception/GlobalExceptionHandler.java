@@ -24,6 +24,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(error);
     }
 
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalState(IllegalStateException e) {
+        ErrorResponse error = new ErrorResponse("FORBIDDEN", e.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+    }
+
     @ExceptionHandler(EntityNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleEntityNotFound(EntityNotFoundException e) {
         ErrorResponse error = new ErrorResponse("NOT_FOUND", e.getMessage());
@@ -64,6 +70,12 @@ public class GlobalExceptionHandler {
 
         response.put("errors", errors);
         return ResponseEntity.badRequest().body(response);
+    }
+
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ErrorResponse> handleBusiness(BusinessException e) {
+        ErrorResponse error = new ErrorResponse(e.getCode(), e.getMessage());
+        return ResponseEntity.badRequest().body(error);
     }
 
     @ExceptionHandler(Exception.class)

@@ -19,7 +19,7 @@ public class MailRequest {
     @Builder
     @AllArgsConstructor
     public static class mailVerifyRequest {
-        @Schema(description = "인증 토큰", example = "test@test.com")
+        @Schema(description = "인증 토큰", example = "ajladjfklasdjflkads")
         private String token;
     }
 

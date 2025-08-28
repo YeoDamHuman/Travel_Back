@@ -1,12 +1,11 @@
 package com.example.backend.scheduleItem.entity;
 
-import com.example.backend.cart.entity.Cart;
 import com.example.backend.schedule.entity.Schedule;
+import com.example.backend.tour.entity.Tour;
 import jakarta.persistence.*;
 import lombok.*;
-
 import java.math.BigInteger;
-import java.sql.Time;
+import java.time.LocalTime;
 import java.util.UUID;
 
 @Entity
@@ -22,30 +21,28 @@ public class ScheduleItem {
     @Column(name = "schedule_item_id", columnDefinition = "BINARY(16)")
     private UUID scheduleItemId;
 
-    @Column(name = "place_id" , nullable = false, columnDefinition = "BINARY(16)")
-    private UUID placeId;
+    @Column(name = "content_id" , nullable = false, columnDefinition = "BINARY(16)")
+    private UUID contentId;
 
-    @Column(name = "day_number", nullable = false)
-    private Integer dayNumber;
+    @Column(name = "day_number", nullable = true)
+    private int dayNumber;
 
-    @Column(name = "start_time", nullable = false)
-    private Time startTime;
+    @Column(name = "start_time", nullable = true)
+    private LocalTime startTime;
 
-    @Column(name = "end_time", nullable = false)
-    private Time endTime;
+    @Column(name = "end_time", nullable = true)
+    private LocalTime endTime;
 
-    @Column(name = "memo", length = 100)
+    @Column(name = "memo", length = 100, nullable = true)
     private String memo;
 
     @Column(name = "cost", nullable = false)
-    private BigInteger cost;
+    private int cost;
+
+    @Column(name = "order", nullable = true)
+    private int order;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "schedule_id", nullable = false)
     private Schedule scheduleId;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "cart_id", nullable = false)
-    private Cart cartId;
-
 }

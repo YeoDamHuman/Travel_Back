@@ -31,6 +31,9 @@ public class User {
     @Column(name = "user_nickname", length = 40, nullable = false)
     private String userNickname;
 
+    @Column(name = "user_profile_Image", length = 1000, nullable = true)
+    private String userProfileImage;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -46,6 +49,29 @@ public class User {
     public enum Role {
         USER,
         ADMIN
+    }
+
+    // ✅ 기타 필드 업데이트 메서드
+    public void updateUserInfo(String email, String userName, String userNickname, String userProfileImage) {
+        if (email != null) {
+            this.email = email;
+        }
+        if (userName != null) {
+            this.userName = userName;
+        }
+
+        if (userNickname != null) {
+            this.userNickname = userNickname;
+        }
+
+        if (userProfileImage != null) {
+            this.userProfileImage = userProfileImage;
+        }
+    }
+
+    // ✅ 비밀번호만 변경하는 메서드
+    public void setPassword(String password) {
+        this.password = password;
     }
 }
 

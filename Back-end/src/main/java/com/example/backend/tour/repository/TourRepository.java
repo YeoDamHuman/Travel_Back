@@ -15,6 +15,8 @@ public interface TourRepository extends JpaRepository<Tour, UUID> {
 
     boolean existsByCartIdAndAddress(Cart cart, String address);
 
+    boolean existsByCartIdAndContentId(Cart cart, String contentId);
+
     void deleteByCartIdAndTourId(Cart cart, UUID tourId);
 
     void deleteAllByCartId(Cart cart);

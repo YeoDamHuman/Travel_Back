@@ -34,22 +34,28 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                // Swagger UI
                                 "/v3/api-docs/**",
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
                                 "/swagger-resources/**",
                                 "/webjars/**",
-
-                                // 인증 없이 접근 가능한 API
                                 "/user/register",
                                 "/user/login",
-                                "/mail/send",
-                                "/mail/verify",
+                                "/mail/**",
                                 "/health/**",
+                                // 투어 관련 API는 인증 없이 가능
+                                "/tour/search",
+                                "/tour/detail/**",
+                                "/tour/search/theme",
+                                "/places/**",
+                                "/file/**",
+                                "/auth/**",
+                                "/schedule/**",
+                                "/weather/**",
+                                "/comment/**",
+                                "/board/**",
+                                "/schedule/**"
 
-                                // 투어 검색은 인증 없이 가능
-                                "/tour/search"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
