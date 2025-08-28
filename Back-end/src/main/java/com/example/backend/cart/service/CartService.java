@@ -191,6 +191,16 @@ public class CartService {
     }
 
     @Transactional(readOnly = true)
+    public Page<CartResponse.TourSearchResponse> searchPlacesByLDong(String lDongRegnCd, String lDongSignguCd, Pageable pageable) {
+        return tourApiClient.searchPlacesByLDong(lDongRegnCd, lDongSignguCd, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<CartResponse.TourSearchResponse> searchPlacesByLDongAndTheme(String lDongRegnCd, String lDongSignguCd, String theme, Pageable pageable) {
+        return tourApiClient.searchPlacesByLDongAndTheme(lDongRegnCd, lDongSignguCd, theme, pageable);
+    }
+
+    @Transactional(readOnly = true)
     public CartResponse.TourDetailResponse getTourDetail(String contentId, String userIdString) {
         CartResponse.TourDetailResponse detailResponse = tourApiClient.getTourDetail(contentId);
         
