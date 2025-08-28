@@ -3,6 +3,7 @@ package com.example.backend.cart.controller;
 import com.example.backend.cart.dto.request.CartRequest;
 import com.example.backend.cart.dto.response.CartResponse;
 import com.example.backend.cart.service.CartService;
+import com.example.backend.region.service.RegionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -17,6 +18,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.UUID;
 
 @RestController
@@ -27,6 +29,7 @@ import java.util.UUID;
 public class CartController {
 
     private final CartService cartService;
+    private final RegionService regionService;
 
     @GetMapping("/cart")
     @Operation(summary = "장바구니 조회", description = "사용자의 장바구니 내용 조회",
@@ -140,35 +143,68 @@ public class CartController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/places/region/{regionCode}")
-    @Operation(summary = "지역별 장소 검색", description = "지역 코드로 해당 지역의 장소들 검색")
+    @GetMapping("/places/region")
+    @Operation(summary = "지역별 장소 검색", description = "법정동 코드로 해당 지역의 장소들 검색")
     public ResponseEntity<Page<CartResponse.TourSearchResponse>> getPlacesByRegion(
-            @Parameter(description = "지역 코드", example = "1") 
-            @PathVariable String regionCode,
+            HttpServletRequest request,
+            @Parameter(description = "법정동 시/도 코드 (강원특별자치도=51)", example = "51") 
+            @RequestParam String lDongRegnCd,
+            @Parameter(description = "법정동 시 코드 (속초시=210)", example = "210") 
+            @RequestParam String lDongSignguCd,
             @Parameter(description = "페이지 번호", example = "0") 
             @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "페이지 크기", example = "20") 
             @RequestParam(defaultValue = "20") int size) {
         
+        // 조회수 증가 (비동기 처리)
+        String ipAddress = getClientIpAddress(request);
+        String userAgent = request.getHeader("User-Agent");
+        regionService.incrementViewCountByLDong(lDongRegnCd, lDongSignguCd, ipAddress, userAgent);
+        
         Pageable pageable = PageRequest.of(page, size);
-        Page<CartResponse.TourSearchResponse> response = cartService.searchPlacesByRegion(regionCode, pageable);
+        Page<CartResponse.TourSearchResponse> response = cartService.searchPlacesByLDong(lDongRegnCd, lDongSignguCd, pageable);
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/places/region/{regionCode}/theme/{theme}")
-    @Operation(summary = "지역 및 테마별 장소 검색", description = "지역 코드와 테마로 장소들 검색")
+    @GetMapping("/places/region/theme")
+    @Operation(summary = "지역 및 테마별 장소 검색", description = "법정동 코드와 테마로 장소들 검색")
     public ResponseEntity<Page<CartResponse.TourSearchResponse>> getPlacesByRegionAndTheme(
-            @Parameter(description = "지역 코드", example = "1") 
-            @PathVariable String regionCode,
+            HttpServletRequest request,
+            @Parameter(description = "법정동 시/도 코드 (강원특별자치도=51)", example = "51") 
+            @RequestParam String lDongRegnCd,
+            @Parameter(description = "법정동 시 코드 (속초시=210)", example = "210") 
+            @RequestParam String lDongSignguCd,
             @Parameter(description = "테마", example = "관광지") 
-            @PathVariable String theme,
+            @RequestParam String theme,
             @Parameter(description = "페이지 번호", example = "0") 
             @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "페이지 크기", example = "20") 
             @RequestParam(defaultValue = "20") int size) {
         
+        // 조회수 증가 (비동기 처리)
+        String ipAddress = getClientIpAddress(request);
+        String userAgent = request.getHeader("User-Agent");
+        regionService.incrementViewCountByLDong(lDongRegnCd, lDongSignguCd, ipAddress, userAgent);
+        
         Pageable pageable = PageRequest.of(page, size);
-        Page<CartResponse.TourSearchResponse> response = cartService.searchPlacesByRegionAndTheme(regionCode, theme, pageable);
+        Page<CartResponse.TourSearchResponse> response = cartService.searchPlacesByLDongAndTheme(lDongRegnCd, lDongSignguCd, theme, pageable);
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 유틸리티 메서드: IP 주소 추출
+     */
+    private String getClientIpAddress(HttpServletRequest request) {
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
+            return xForwardedFor.split(",")[0].trim();
+        }
+        
+        String xRealIp = request.getHeader("X-Real-IP");
+        if (xRealIp != null && !xRealIp.isEmpty()) {
+            return xRealIp;
+        }
+        
+        return request.getRemoteAddr();
     }
 }
