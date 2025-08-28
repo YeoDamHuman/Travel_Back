@@ -1,15 +1,20 @@
 package com.example.backend.cart.service;
 
-import com.example.backend.cart.dto.request.AddTourRequest;
+import com.example.backend.cart.dto.request.CartRequest;
 import com.example.backend.cart.dto.response.CartResponse;
 import com.example.backend.cart.entity.Cart;
 import com.example.backend.cart.repository.CartRepository;
-import com.example.backend.common.exception.BusinessException;
+import com.example.backend.tour.dto.response.TourDetailResponse;
 import com.example.backend.tour.entity.Tour;
+import com.example.backend.tour.entity.TourCategory;
 import com.example.backend.tour.repository.TourRepository;
 import com.example.backend.user.entity.User;
 import com.example.backend.user.repository.UserRepository;
+import com.example.backend.tour.webclient.TourApiClient;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,22 +24,35 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CartService {
 
     private final CartRepository cartRepository;
     private final TourRepository tourRepository;
     private final UserRepository userRepository;
+    private final TourApiClient tourApiClient;
 
-    @Transactional(readOnly = true)
+    @Transactional
     public CartResponse.CartDetailResponse getCart(String userIdString) {
-        User user = findUserById(userIdString);
-        Cart cart = cartRepository.findByUser(user).orElse(null);
+        UUID userId = UUID.fromString(userIdString);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+        Cart cart = cartRepository.findByUserId(user)
+                .orElse(null);
 
         if (cart == null) {
-            return CartResponse.CartDetailResponse.empty();
+            return CartResponse.CartDetailResponse.builder()
+                    .cartId(null)
+                    .region("서울")
+                    .tours(List.of())
+                    .totalCount(0)
+                    .totalPrice(0L)
+                    .build();
         }
 
-        List<Tour> tours = tourRepository.findByCart(cart);
+        List<Tour> tours = tourRepository.findByCartId(cart);
+
         List<CartResponse.TourInfo> tourInfos = tours.stream()
                 .map(tour -> CartResponse.TourInfo.builder()
                         .tourId(tour.getTourId())
@@ -64,82 +82,112 @@ public class CartService {
     }
 
     @Transactional
-    public CartResponse.AddTourResponse addTourToCart(String userIdString, AddTourRequest request) {
-        User user = findUserById(userIdString);
-        Cart cart = cartRepository.findByUser(user).orElseGet(() -> createNewCart(user));
+    public CartResponse.AddTourResponse addTourToCart(String userIdString, CartResponse.TourSearchResponse tourResponse) {
+        UUID userId = UUID.fromString(userIdString);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
-        Tour existingTour = tourRepository.findByContentId(request.getContentId()).orElse(null);
-        if (existingTour != null && existingTour.getCart() != null) {
-            throw new BusinessException("CART_DUPLICATE_TOUR", "이미 장바구니에 추가된 투어입니다.");
+        Cart cart = cartRepository.findByUserId(user)
+                .orElseGet(() -> createNewCart(user));
+
+        boolean isDuplicate = tourRepository.existsByCartIdAndAddress(cart, tourResponse.getAddress());
+        if (isDuplicate) {
+            throw new IllegalArgumentException("이미 장바구니에 추가된 투어입니다.");
         }
 
         Tour tour = Tour.builder()
-                .cart(cart)
-                .contentId(request.getContentId())
-                .contentTypeId(request.getContentTypeId())
-                .title(request.getTitle())
-                .address(request.getAddress())
-                .address2(request.getAddress2())
-                .zipcode(request.getZipcode())
-                .areaCode(request.getAreaCode())
-                .cat1(request.getCat1())
-                .cat2(request.getCat2())
-                .cat3(request.getCat3())
-                .createdTime(request.getCreatedTime())
-                .firstImage(request.getFirstImage())
-                .firstImage2(request.getFirstImage2())
-                .cpyrhtDivCd(request.getCpyrhtDivCd())
-                .mapX(request.getMapX())
-                .mapY(request.getMapY())
-                .mlevel(request.getMlevel())
-                .modifiedTime(request.getModifiedTime())
-                .sigunguCode(request.getSigunguCode())
-                .tel(request.getTel())
-                .overview(request.getOverview())
-                .lDongRegnCd(request.getLdongRegnCd())
-                .lDongSignguCd(request.getLdongSignguCd())
-                .lclsSystm1(request.getLclsSystm1())
-                .lclsSystm2(request.getLclsSystm2())
-                .lclsSystm3(request.getLclsSystm3())
-                .longitude(request.getMapX() != null && !request.getMapX().isEmpty() ? new java.math.BigDecimal(request.getMapX()) : null)
-                .latitude(request.getMapY() != null && !request.getMapY().isEmpty() ? new java.math.BigDecimal(request.getMapY()) : null)
-                .image(request.getFirstImage())
+                .contentId(tourResponse.getContentId())
+                .contentTypeId(tourResponse.getContentTypeId())
+                .title(tourResponse.getTitle())
+                .address(tourResponse.getAddress())
+                .address2(tourResponse.getAddress2())
+                .zipcode(tourResponse.getZipcode())
+                .areaCode(tourResponse.getAreaCode())
+                .cat1(tourResponse.getCat1())
+                .cat2(tourResponse.getCat2())
+                .cat3(tourResponse.getCat3())
+                .createdTime(tourResponse.getCreatedTime())
+                .firstImage(tourResponse.getFirstImage())
+                .firstImage2(tourResponse.getFirstImage2())
+                .cpyrhtDivCd(tourResponse.getCpyrhtDivCd())
+                .mapX(tourResponse.getMapX())
+                .mapY(tourResponse.getMapY())
+                .mlevel(tourResponse.getMlevel())
+                .modifiedTime(tourResponse.getModifiedTime())
+                .sigunguCode(tourResponse.getSigunguCode())
+                .tel(tourResponse.getTel())
+                .overview("") // 현재 TourSearchResponse에는 overview가 없으므로 기본값
+                .lDongRegnCd(tourResponse.getLDongRegnCd())
+                .lDongSignguCd(tourResponse.getLDongSignguCd())
+                .lclsSystm1(tourResponse.getLclsSystm1())
+                .lclsSystm2(tourResponse.getLclsSystm2())
+                .lclsSystm3(tourResponse.getLclsSystm3())
+                .longitude(tourResponse.getMapX() != null && !tourResponse.getMapX().isEmpty()
+                        ? Double.valueOf(tourResponse.getMapX()) : null)
+                .latitude(tourResponse.getMapY() != null && !tourResponse.getMapY().isEmpty()
+                        ? Double.valueOf(tourResponse.getMapY()) : null)
+                .image(tourResponse.getFirstImage())
+                .tema("") // 필요에 따라 설정
+                .cartId(cart)
                 .build();
-        
-        tourRepository.save(tour);
+
+        Tour savedTour = tourRepository.save(tour);
 
         if (cart.getRegion() == null || cart.getRegion().isEmpty()) {
-            String region = extractRegionFromAddress(request.getAddress());
-            cart.updateRegion(region);
+            String region = extractRegionFromAddress(tourResponse.getAddress());
+            cart = Cart.builder()
+                    .cartId(cart.getCartId())
+                    .region(region)
+                    .userId(cart.getUserId())
+                    .build();
             cartRepository.save(cart);
         }
 
-        return new CartResponse.AddTourResponse(tour.getTourId(), "투어가 장바구니에 추가되었습니다.");
+        return CartResponse.AddTourResponse.builder()
+                .tourId(savedTour.getTourId())
+                .message("투어가 장바구니에 추가되었습니다.")
+                .build();
     }
 
     @Transactional
     public void removeTourFromCart(String userIdString, UUID tourId) {
-        User user = findUserById(userIdString);
-        Cart cart = findCartByUser(user);
-        tourRepository.deleteByCartAndTourId(cart, tourId);
+        UUID userId = UUID.fromString(userIdString);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+        Cart cart = cartRepository.findByUserId(user)
+                .orElseThrow(() -> new IllegalArgumentException("장바구니를 찾을 수 없습니다."));
+
+        tourRepository.deleteByCartIdAndTourId(cart, tourId);
+        log.info("투어 삭제 완료 - tourId: {}", tourId);
     }
 
     @Transactional
     public void clearCart(String userIdString) {
-        User user = findUserById(userIdString);
-        Cart cart = findCartByUser(user);
-        tourRepository.deleteAllByCart(cart);
-    }
-
-    private User findUserById(String userIdString) {
         UUID userId = UUID.fromString(userIdString);
-        return userRepository.findById(userId)
+        User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+        Cart cart = cartRepository.findByUserId(user)
+                .orElseThrow(() -> new IllegalArgumentException("장바구니를 찾을 수 없습니다."));
+
+        tourRepository.deleteAllByCartId(cart);
+        log.info("장바구니 전체 삭제 완료 - userId: {}", userId);
     }
 
-    private Cart findCartByUser(User user) {
-        return cartRepository.findByUser(user)
-                .orElseThrow(() -> new IllegalArgumentException("장바구니를 찾을 수 없습니다."));
+    @Transactional(readOnly = true)
+    public Page<CartResponse.TourSearchResponse> searchTours(String keyword, String region, String category, Pageable pageable) {
+        return tourApiClient.searchTours(keyword, region, category, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<CartResponse.TourSearchResponse> searchPlacesByRegion(String regionCode, Pageable pageable) {
+        return tourApiClient.searchPlacesByRegion(regionCode, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<CartResponse.TourSearchResponse> searchPlacesByRegionAndTheme(String regionCode, String theme, Pageable pageable) {
+        return tourApiClient.searchPlacesByRegionAndTheme(regionCode, theme, pageable);
     }
 
     @Transactional(readOnly = true)
@@ -251,59 +299,18 @@ public class CartService {
     }
 
     private Cart createNewCart(User user) {
-        Cart cart = Cart.builder().user(user).build();
+        Cart cart = Cart.builder()
+                .userId(user)
+                .region("서울")
+                .build();
         return cartRepository.save(cart);
     }
 
     private String extractRegionFromAddress(String address) {
-        if (address == null || address.isEmpty()) return "기타";
         String[] parts = address.split(" ");
-        if (parts.length > 1) {
-            if (parts[0].matches("^(서울|부산|대구|인천|광주|대전|울산)광역시$")) {
-                return parts[0];
-            } else if (parts[0].matches("^(경기도|강원도|충청북도|충청남도|전라북도|전라남도|경상북도|경상남도|제주특별자치도)$")) {
-                return parts[0];
-            }
+        if (parts.length > 0) {
+            return parts[0];
         }
-        return parts.length > 0 ? parts[0] : "기타";
-    }
-
-    private CartResponse.TourInfo mapToTourInfo(Tour tour) {
-        return CartResponse.TourInfo.builder()
-                .tourId(tour.getTourId())
-                .longitude(tour.getLongitude())
-                .latitude(tour.getLatitude())
-                .address(tour.getAddress())
-                .address2(tour.getAddress2())
-                .zipcode(tour.getZipcode())
-                .areaCode(tour.getAreaCode())
-                .cat1(tour.getCat1())
-                .cat2(tour.getCat2())
-                .cat3(tour.getCat3())
-                .createdTime(tour.getCreatedTime())
-                .firstImage(tour.getFirstImage())
-                .firstImage2(tour.getFirstImage2())
-                .cpyrhtDivCd(tour.getCpyrhtDivCd())
-                .mapX(tour.getMapX())
-                .mapY(tour.getMapY())
-                .mlevel(tour.getMlevel())
-                .modifiedTime(tour.getModifiedTime())
-                .sigunguCode(tour.getSigunguCode())
-                .tel(tour.getTel())
-                .overview(tour.getOverview())
-                .lDongRegnCd(tour.getLDongRegnCd())
-                .lDongSignguCd(tour.getLDongSignguCd())
-                .lclsSystm1(tour.getLclsSystm1())
-                .lclsSystm2(tour.getLclsSystm2())
-                .lclsSystm3(tour.getLclsSystm3())
-                .contentId(tour.getContentId())
-                .contentTypeId(tour.getContentTypeId())
-                .title(tour.getTitle())
-                .image(tour.getImage())
-                .tema(tour.getTema())
-                .category(tour.getCategory())
-                .price(tour.getPrice())
-                .thema(tour.getThema())
-                .build();
+        return "기타";
     }
 }

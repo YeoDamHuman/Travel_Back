@@ -1,8 +1,18 @@
 package com.example.backend.tour.webclient;
 
-import com.example.backend.tour.dto.response.TourResponse;
+import com.example.backend.cart.dto.response.CartResponse;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.util.UriComponentsBuilder;
+import lombok.extern.slf4j.Slf4j;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -434,6 +444,86 @@ public class TourApiClient {
 
 
     /**
+     * 지역 코드로 장소 검색
+     */
+    public Page<CartResponse.TourSearchResponse> searchPlacesByRegion(String regionCode, Pageable pageable) {
+        try {
+            log.info("=== 지역 코드로 장소 검색 - regionCode: {} ===", regionCode);
+
+            String uri = UriComponentsBuilder.fromHttpUrl(baseUrl)
+                    .path("/areaBasedList2")
+                    .queryParam("serviceKey", apiKey)
+                    .queryParam("MobileOS", "ETC")
+                    .queryParam("MobileApp", "TravelPlanner")
+                    .queryParam("_type", "json")
+                    .queryParam("arrange", "A")
+                    .queryParam("pageNo", pageable.getPageNumber() + 1)
+                    .queryParam("numOfRows", pageable.getPageSize())
+                    .queryParam("areaCode", regionCode)
+                    .build(false)
+                    .toUriString();
+
+            log.info("지역 검색 URL: {}", uri);
+
+            String response = webClient.get()
+                    .uri(uri)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .timeout(Duration.ofSeconds(10))
+                    .block();
+
+            return parseSearchResponse(response, pageable);
+
+        } catch (Exception e) {
+            log.error("지역별 검색 실패", e);
+            return Page.empty(pageable);
+        }
+    }
+
+    /**
+     * 지역 코드와 테마로 장소 검색
+     */
+    public Page<CartResponse.TourSearchResponse> searchPlacesByRegionAndTheme(String regionCode, String theme, Pageable pageable) {
+        try {
+            log.info("=== 지역-테마 검색 - regionCode: {}, theme: {} ===", regionCode, theme);
+
+            String[] themeCategory = getThemeCategory(theme);
+            String cat1 = themeCategory.length > 0 ? themeCategory[0] : "";
+            String cat2 = themeCategory.length > 1 ? themeCategory[1] : "";
+
+            String uri = UriComponentsBuilder.fromHttpUrl(baseUrl)
+                    .path("/areaBasedList2")
+                    .queryParam("serviceKey", apiKey)
+                    .queryParam("MobileOS", "ETC")
+                    .queryParam("MobileApp", "TravelPlanner")
+                    .queryParam("_type", "json")
+                    .queryParam("arrange", "A")
+                    .queryParam("pageNo", pageable.getPageNumber() + 1)
+                    .queryParam("numOfRows", pageable.getPageSize())
+                    .queryParam("areaCode", regionCode)
+                    .queryParam("cat1", cat1)
+                    .queryParam("cat2", cat2)
+                    .build(false)
+                    .toUriString();
+
+            log.info("지역-테마 검색 URL: {}", uri);
+
+            String response = webClient.get()
+                    .uri(uri)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .timeout(Duration.ofSeconds(10))
+                    .block();
+
+            return parseSearchResponse(response, pageable);
+
+        } catch (Exception e) {
+            log.error("지역-테마 검색 실패", e);
+            return Page.empty(pageable);
+        }
+    }
+
+    /**
      * 테마별 투어 검색 (cat1, cat2, cat3 활용)
      */
     public Page<CartResponse.TourSearchResponse> searchToursByTheme(String theme, String region, Pageable pageable) {
@@ -515,6 +605,20 @@ public class TourApiClient {
         themeMap.put("힐링", new String[]{"A01", "A0101"});          // 자연관광지
         
         return themeMap.getOrDefault(theme, new String[]{});
+    }
+
+    /**
+     * 테마에 따른 카테고리 코드 반환 (단일 테마용)
+     */
+    private String[] getThemeCategory(String theme) {
+        return getThemeCategories(theme);
+    }
+
+    /**
+     * 검색 응답 파싱 (parseTourResponse와 동일한 로직)
+     */
+    private Page<CartResponse.TourSearchResponse> parseSearchResponse(String response, Pageable pageable) {
+        return parseTourResponse(response, pageable);
     }
 
 
