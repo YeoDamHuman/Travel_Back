@@ -621,6 +621,88 @@ public class TourApiClient {
         return parseTourResponse(response, pageable);
     }
 
+    /**
+     * 법정동 코드로 장소 검색
+     */
+    public Page<CartResponse.TourSearchResponse> searchPlacesByLDong(String lDongRegnCd, String lDongSignguCd, Pageable pageable) {
+        try {
+            log.info("=== 법정동 코드로 장소 검색 - lDongRegnCd: {}, lDongSignguCd: {} ===", lDongRegnCd, lDongSignguCd);
+
+            String uri = UriComponentsBuilder.fromHttpUrl(baseUrl)
+                    .path("/areaBasedList2")
+                    .queryParam("serviceKey", apiKey)
+                    .queryParam("MobileOS", "ETC")
+                    .queryParam("MobileApp", "TravelPlanner")
+                    .queryParam("_type", "json")
+                    .queryParam("arrange", "A")
+                    .queryParam("pageNo", pageable.getPageNumber() + 1)
+                    .queryParam("numOfRows", pageable.getPageSize())
+                    .queryParam("lDongRegnCd", lDongRegnCd)
+                    .queryParam("lDongSignguCd", lDongSignguCd)
+                    .build(false)
+                    .toUriString();
+
+            log.info("법정동 검색 URL: {}", uri);
+
+            String response = webClient.get()
+                    .uri(uri)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .timeout(Duration.ofSeconds(10))
+                    .block();
+
+            return parseSearchResponse(response, pageable);
+
+        } catch (Exception e) {
+            log.error("법정동별 검색 실패", e);
+            return Page.empty(pageable);
+        }
+    }
+
+    /**
+     * 법정동 코드와 테마로 장소 검색
+     */
+    public Page<CartResponse.TourSearchResponse> searchPlacesByLDongAndTheme(String lDongRegnCd, String lDongSignguCd, String theme, Pageable pageable) {
+        try {
+            log.info("=== 법정동-테마 검색 - lDongRegnCd: {}, lDongSignguCd: {}, theme: {} ===", lDongRegnCd, lDongSignguCd, theme);
+
+            String[] themeCategory = getThemeCategory(theme);
+            String cat1 = themeCategory.length > 0 ? themeCategory[0] : "";
+            String cat2 = themeCategory.length > 1 ? themeCategory[1] : "";
+
+            String uri = UriComponentsBuilder.fromHttpUrl(baseUrl)
+                    .path("/areaBasedList2")
+                    .queryParam("serviceKey", apiKey)
+                    .queryParam("MobileOS", "ETC")
+                    .queryParam("MobileApp", "TravelPlanner")
+                    .queryParam("_type", "json")
+                    .queryParam("arrange", "A")
+                    .queryParam("pageNo", pageable.getPageNumber() + 1)
+                    .queryParam("numOfRows", pageable.getPageSize())
+                    .queryParam("lDongRegnCd", lDongRegnCd)
+                    .queryParam("lDongSignguCd", lDongSignguCd)
+                    .queryParam("cat1", cat1)
+                    .queryParam("cat2", cat2)
+                    .build(false)
+                    .toUriString();
+
+            log.info("법정동-테마 검색 URL: {}", uri);
+
+            String response = webClient.get()
+                    .uri(uri)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .timeout(Duration.ofSeconds(10))
+                    .block();
+
+            return parseSearchResponse(response, pageable);
+
+        } catch (Exception e) {
+            log.error("법정동-테마 검색 실패", e);
+            return Page.empty(pageable);
+        }
+    }
+
 
     /**
      * Fallback 응답 생성
