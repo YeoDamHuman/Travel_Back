@@ -81,11 +81,11 @@ jobs:
 
             # 3. 새로운 JAR 파일 복사
             # GitHub Actions 워크플로우 러너의 작업 공간에서 빌드된 .jar 파일을 EC2로 복사합니다.
-            # 'your-repo-name'을 실제 GitHub 저장소 이름으로 **반드시 변경해야 합니다.**
+            # 'Travel_Back'을 실제 GitHub 저장소 이름으로 변경했습니다.
             # 백엔드 프로젝트 내의 build/libs 경로에 있는 최신 JAR 파일을 복사합니다.
             # .jar 파일명이 고정적이지 않을 수 있으므로, 와일드카드 (*)를 사용하여 가장 최근에 빌드된 파일을 찾습니다.
-            # 예시: /home/runner/work/my-repo/my-repo/Back-end/build/libs/backend-0.0.1-SNAPSHOT.jar
-            SOURCE_JAR="/home/runner/work/your-repo-name/your-repo-name/Back-end/build/libs/*.jar"
+            # 예시: /home/runner/work/Travel_Back/Travel_Back/Back-end/build/libs/backend-0.0.1-SNAPSHOT.jar
+            SOURCE_JAR="/home/runner/work/Travel_Back/Travel_Back/Back-end/build/libs/*.jar"
             
             # 여러 개의 .jar 파일이 있을 경우 (일반적인 빌드에서는 드물지만), 가장 최근 것을 선택
             JAR_FILE=$(ls -t ${SOURCE_JAR} 2>/dev/null | head -n 1)
