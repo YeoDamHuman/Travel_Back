@@ -33,10 +33,13 @@ jobs:
       working-directory: ./Back-end
       run: ./gradlew build # Gradle Wrapper를 사용하여 프로젝트 빌드
 
-    # 디버깅용으로 추가했던 JAR 파일 찾기 스텝은 이제 필요 없을 수 있습니다.
-    # 하지만 확실한 경로 확인을 위해 잠시 남겨둘 수 있습니다.
-    - name: Find JAR file path after build (for debugging)
-      run: find . -name "*.jar"
+    # 빌드된 JAR 파일을 아티팩트로 업로드합니다.
+    - name: Upload JAR artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: spring-boot-app # 아티팩트 이름
+        path: ./Back-end/build/libs/*.jar # 빌드된 JAR 파일의 경로 (이전 로그에서 확인됨)
+        retention-days: 1 # 아티팩트 보존 기간 (선택 사항)
 
   deploy:
     runs-on: ubuntu-latest # 최신 Ubuntu 환경에서 배포 작업 실행
@@ -46,20 +49,21 @@ jobs:
       contents: read # 리포지토리 내용을 읽을 수 있는 권한 부여 (SSH Action에 필요)
 
     steps:
-      # --- 여기! `actions/checkout@v4` 스텝을 제거했습니다! ---
-      # 'build' 잡에서 이미 리포지토리를 체크아웃하고 빌드했으므로,
-      # 'deploy' 잡에서는 다시 체크아웃할 필요 없이 기존 파일을 사용합니다.
+      # 빌드 잡에서 업로드한 아티팩트(JAR 파일)를 다운로드합니다.
+      - name: Download JAR artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: spring-boot-app # 업로드했던 아티팩트 이름과 동일
+          path: ./ # 현재 작업 디렉토리(./)로 다운로드
 
-      - name: Verify JAR file path in deploy job (for debugging)
-        run: |
-          echo "현재 작업 디렉토리: $(pwd)"
-          echo "GitHub Workspace: $GITHUB_WORKSPACE"
-          echo "리포지토리 루트의 파일 목록 (디버깅용):"
-          ls -R "${GITHUB_WORKSPACE}" # 전체 워크스페이스의 파일 목록을 재귀적으로 출력
-
-          # 이전에 빌드된 JAR 파일 경로를 찾기 위해 추가적인 검색을 수행합니다.
-          # 이 단계의 로그를 통해 정확한 JAR 파일 경로를 파악하세요.
-          find "${GITHUB_WORKSPACE}" -name "*.jar"
+      # 이제는 JAR 파일이 다운로드되었을 것이므로, 디버깅용 파일 목록 스텝은 제거합니다.
+      # - name: Verify JAR file path in deploy job (for debugging)
+      #   run: |
+      #     echo "현재 작업 디렉토리: $(pwd)"
+      #     echo "GitHub Workspace: $GITHUB_WORKSPACE"
+      #     echo "리포지토리 루트의 파일 목록 (디버깅용):"
+      #     ls -R "${GITHUB_WORKSPACE}"
+      #     find "${GITHUB_WORKSPACE}" -name "*.jar"
 
       - name: Deploy Spring Boot App to EC2 via SSH
         uses: appleboy/ssh-action@v1.0.3 # SSH 접속을 위한 GitHub Action을 사용합니다.
@@ -92,10 +96,8 @@ jobs:
             rm -f app.jar
 
             # 3. 새로운 JAR 파일 복사
-            # 'Travel_Back' 리포지토리 이름과 프로젝트 구조를 가정하여 설정된 경로입니다.
-            # 이 경로는 'build' 잡에서 생성된 JAR 파일의 경로를 따라야 합니다.
-            # `actions/checkout@v4`를 제거했으므로, 이제 JAR 파일이 남아있을 것입니다.
-            SOURCE_JAR="/home/runner/work/Travel_Back/Travel_Back/Back-end/build/libs/*.jar"
+            # 'download-artifact'로 다운로드된 JAR 파일은 현재 작업 디렉토리(.)에 있습니다.
+            SOURCE_JAR="./*.jar" # 다운로드된 아티팩트의 경로
             
             JAR_FILE=$(ls -t ${SOURCE_JAR} 2>/dev/null | head -n 1)
 
