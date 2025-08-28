@@ -56,14 +56,16 @@ jobs:
           name: spring-boot-app # 업로드했던 아티팩트 이름과 동일
           path: ./ # 현재 작업 디렉토리(./)로 다운로드
 
-      # 이제는 JAR 파일이 다운로드되었을 것이므로, 디버깅용 파일 목록 스텝은 제거합니다.
-      # - name: Verify JAR file path in deploy job (for debugging)
-      #   run: |
-      #     echo "현재 작업 디렉토리: $(pwd)"
-      #     echo "GitHub Workspace: $GITHUB_WORKSPACE"
-      #     echo "리포지토리 루트의 파일 목록 (디버깅용):"
-      #     ls -R "${GITHUB_WORKSPACE}"
-      #     find "${GITHUB_WORKSPACE}" -name "*.jar"
+      # JAR 파일이 다운로드된 후 실제 경로를 확인하기 위한 디버깅 스텝을 다시 추가합니다.
+      - name: Verify JAR file path in deploy job (for debugging)
+        run: |
+          echo "현재 작업 디렉토리: $(pwd)"
+          echo "GitHub Workspace: $GITHUB_WORKSPACE"
+          echo "다운로드된 아티팩트 내의 파일 목록:"
+          ls -R . # 현재 디렉토리의 모든 파일 및 디렉토리를 재귀적으로 출력
+
+          # JAR 파일의 정확한 경로를 찾아 출력합니다.
+          find . -name "*.jar"
 
       - name: Deploy Spring Boot App to EC2 via SSH
         uses: appleboy/ssh-action@v1.0.3 # SSH 접속을 위한 GitHub Action을 사용합니다.
@@ -96,9 +98,9 @@ jobs:
             rm -f app.jar
 
             # 3. 새로운 JAR 파일 복사
-            # 'download-artifact'로 다운로드된 JAR 파일은 현재 작업 디렉토리(.)에 있습니다.
-            SOURCE_JAR="./*.jar" # 다운로드된 아티팩트의 경로
-            
+            # 'download-artifact'로 다운로드된 JAR 파일은 ./Back-end/build/libs/ 에 있습니다.
+            SOURCE_JAR="${GITHUB_WORKSPACE}/Back-end/build/libs/*.jar" # 정확한 경로를 다시 지정
+
             JAR_FILE=$(ls -t ${SOURCE_JAR} 2>/dev/null | head -n 1)
 
             if [ -z "$JAR_FILE" ]; then
