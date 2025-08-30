@@ -1,5 +1,7 @@
 package com.example.backend.schedule.service;
 
+import com.example.backend.cart.entity.Cart;
+import com.example.backend.cart.service.CartService;
 import com.example.backend.common.auth.AuthUtil;
 import com.example.backend.schedule.dto.request.ScheduleRequest.ScheduleCreateRequest;
 import com.example.backend.schedule.dto.request.ScheduleRequest.scheduleUpdateRequest;
@@ -57,7 +59,8 @@ public class ScheduleService {
     public UUID createSchedule(ScheduleCreateRequest request) {
         User user = AuthUtil.getCurrentUser(userRepository);
         Group group = scheduleFilter.validateScheduleRequest(request.getScheduleType(), request.getGroupId());
-        Schedule savedSchedule = scheduleRepository.save(ScheduleCreateRequest.toEntity(request, group, user));
+        Cart cart = scheduleFilter.validateCartExistence(user.getUserId());
+        Schedule savedSchedule = scheduleRepository.save(ScheduleCreateRequest.toEntity(request, group, user, cart));
         List<ScheduleItem> scheduleItems = request.getScheduleItem().stream()
                 .map(itemDto -> ScheduleItem.builder()
                         .contentId(itemDto.getContentId())

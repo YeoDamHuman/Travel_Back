@@ -1,5 +1,6 @@
 package com.example.backend.schedule.dto.request;
 
+import com.example.backend.cart.entity.Cart;
 import com.example.backend.group.entity.Group;
 import com.example.backend.schedule.entity.Schedule;
 import com.example.backend.schedule.entity.ScheduleType;
@@ -40,7 +41,7 @@ public class ScheduleRequest {
         @Schema(description = "일정 아이템 목록")
         private List<Items> scheduleItem;
 
-        public static Schedule toEntity(ScheduleCreateRequest request, Group group, User user) {
+        public static Schedule toEntity(ScheduleCreateRequest request, Group group, User user, Cart cart) {
             return Schedule.builder()
                     .scheduleId(null)
                     .scheduleName(request.getScheduleName())
@@ -52,7 +53,7 @@ public class ScheduleRequest {
                     .groupId(group)
                     .userId(user)
                     .scheduleType(request.scheduleType)
-                    .cartId(null)
+                    .cartId(cart)
                     .build();
         }
 
