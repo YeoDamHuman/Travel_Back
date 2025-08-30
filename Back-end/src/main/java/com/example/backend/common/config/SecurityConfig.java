@@ -43,7 +43,11 @@ public class SecurityConfig {
                                 "/user/login",
                                 "/mail/**",
                                 "/health/**",
+                                // 투어 관련 API는 인증 없이 가능
                                 "/tour/search",
+                                "/tour/detail/**",
+                                "/tour/search/theme",
+                                "/places/**",
                                 "/file/**",
                                 "/auth/**",
                                 "/schedule/**",

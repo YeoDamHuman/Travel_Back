@@ -1,5 +1,6 @@
 package com.example.backend.cart.entity;
 
+
 import com.example.backend.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
@@ -20,21 +21,16 @@ public class Cart {
     @Column(name = "cart_id", columnDefinition = "BINARY(16)", nullable = false)
     private UUID cartId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", columnDefinition = "BINARY(16)", nullable = false)
-    private User user;
-
     @Column(name = "region", length = 255, nullable = false)
     private String region;
 
-    @Column(name = "budget", nullable = false, columnDefinition = "BIGINT")
-    private Long budget;
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User userId;
 
-    public void updateRegion(String region) {
-        this.region = region;
-    }
+    @Column(name = "budget")
+    private BigDecimal budget;
 
-    public void updateBudget(Long budget) {
-        this.budget = budget;
-    }
+    @Column(name = "total_expense")
+    private BigDecimal totalExpense;
 }

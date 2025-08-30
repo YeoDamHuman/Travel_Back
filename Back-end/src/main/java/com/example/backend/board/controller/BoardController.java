@@ -25,7 +25,7 @@ public class BoardController {
     public ResponseEntity<?> createBoard(@RequestBody BoardRequestDto requestDto) {
         UUID userId = AuthUtil.getCurrentUserId();
         UUID boardId = boardService.createBoard(requestDto, userId);
-        return ResponseEntity.ok().body("게시글 작성 완료, boardId: " + boardId);
+        return ResponseEntity.ok().body("boardId: " + boardId);
     }
 
     //목록 조회

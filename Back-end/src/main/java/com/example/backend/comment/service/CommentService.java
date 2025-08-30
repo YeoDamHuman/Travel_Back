@@ -96,6 +96,7 @@ public class CommentService {
                 .map(comment -> CommentResponseDto.builder()
                         .commentId(comment.getCommentId())
                         .userNickname(comment.getUserId().getUserNickname())
+                        .userProfileImage(comment.getUserId().getUserProfileImage())
                         .content(comment.getContent())
                         .createdAt(comment.getCreatedAt())
                         .build())

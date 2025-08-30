@@ -15,11 +15,12 @@ public class BoardDetailResponseDto {
     private String title;
     private String content;
     private String userNickname;
+    private String userProfileImage;
     private LocalDateTime createdAt;
     private int count;
     private String tag;
     private List<CommentResponseDto> comments;
-    private String imageUrl;
+    private List<String> imageUrls;
     private boolean hasNextComment;
 
 }
