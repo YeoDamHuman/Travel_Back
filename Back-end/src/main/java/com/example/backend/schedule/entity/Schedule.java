@@ -47,6 +47,9 @@ public class Schedule {
     @Column(name = "budget", nullable = false)
     private BigInteger budget;
 
+    @Column(name = "scheduleStyle", nullable = false)
+    private String scheduleStyle;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "group_id", nullable = true)
     private Group groupId;

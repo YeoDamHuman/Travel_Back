@@ -32,7 +32,7 @@ public class ScheduleRequest {
         private UUID groupId;
         @Schema(description = "스케줄 타입 (PERSONAL, GROUP 중 하나)", example = "GROUP")
         private ScheduleType scheduleType;
-        @Schema(description = "스케줄 스타일 (여행 목적 등)", example = "Shopping")
+        @Schema(description = "스케줄 스타일 (여행 목적 등)", example = "쇼핑")
         private String scheduleStyle;
         @Schema(description = "출발 장소", example = "서울역")
         private String startPlace;
@@ -51,6 +51,7 @@ public class ScheduleRequest {
                     .updatedAt(null)
                     .budget(request.budget)
                     .groupId(group)
+                    .scheduleStyle(request.scheduleStyle)
                     .userId(user)
                     .scheduleType(request.scheduleType)
                     .cartId(cart)
