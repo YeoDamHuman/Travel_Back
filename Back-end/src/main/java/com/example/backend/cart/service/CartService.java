@@ -323,4 +323,10 @@ public class CartService {
         }
         return "기타";
     }
+
+    @Transactional(readOnly = true)
+    public Cart findCartById(UUID cartId) {
+        return cartRepository.findById(cartId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 장바구니입니다. cartId: " + cartId));
+    }
 }
