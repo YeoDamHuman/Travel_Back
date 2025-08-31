@@ -53,7 +53,7 @@ public class RegionController {
     @GetMapping("/hot/{limit}")
     @Operation(summary = "핫플 지역 추천 (개수 지정)", description = "조회수 기준 인기 지역 상위 N개 추천 (인증 불필요)")
     public ResponseEntity<RegionResponse.HotRegionListResponse> getHotRegions(
-            @Parameter(description = "조회할 개수 (최대 20개)", example = "5")
+            @Parameter(description = "조회할 개수", example = "5")
             @PathVariable int limit) {
         RegionResponse.HotRegionListResponse response = regionService.getHotRegions(limit);
         return ResponseEntity.ok(response);

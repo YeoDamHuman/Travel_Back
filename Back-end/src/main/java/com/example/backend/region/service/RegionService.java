@@ -175,7 +175,7 @@ public class RegionService {
      */
     @Transactional(readOnly = true)
     public RegionResponse.HotRegionListResponse getHotRegions(int limit) {
-        Pageable pageable = PageRequest.of(0, Math.min(limit, 20)); // 최대 20개 제한
+        Pageable pageable = PageRequest.of(0, limit);
         List<Region> hotRegions = regionRepository.findTopCitiesByViewCount(pageable);
         
         List<RegionResponse.HotRegionInfo> hotRegionInfos = hotRegions.stream()
