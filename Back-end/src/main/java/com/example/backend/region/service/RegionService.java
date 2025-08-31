@@ -31,7 +31,7 @@ public class RegionService {
 
     @Transactional(readOnly = true)
     public RegionResponse.RegionListResponse getAllRegions() {
-        List<Region> regions = regionRepository.findAll();
+        List<Region> regions = regionRepository.findAllCities();
         
         List<RegionResponse.RegionInfo> regionInfos = regions.stream()
                 .map(this::convertToRegionInfo)
@@ -219,4 +219,5 @@ public class RegionService {
     public void initializeRegions() {
         regionInitService.refreshRegions();
     }
+
 }

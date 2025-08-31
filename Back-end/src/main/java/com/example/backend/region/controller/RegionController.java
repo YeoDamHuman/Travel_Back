@@ -23,10 +23,8 @@ public class RegionController {
     private final RegionService regionService;
 
     @GetMapping
-    @Operation(summary = "전체 지역 목록 조회", description = "모든 지역의 이름, 코드, 이미지 정보 조회",
-            security = @SecurityRequirement(name = "JWT"))
-    public ResponseEntity<RegionResponse.RegionListResponse> getAllRegions(
-            @AuthenticationPrincipal UserDetails userDetails) {
+    @Operation(summary = "전체 지역 목록 조회", description = "모든 지역의 이름, 코드, 이미지 정보 조회 (인증 불필요)")
+    public ResponseEntity<RegionResponse.RegionListResponse> getAllRegions() {
         RegionResponse.RegionListResponse response = regionService.getAllRegions();
         return ResponseEntity.ok(response);
     }
@@ -67,6 +65,7 @@ public class RegionController {
         regionService.initializeRegions();
         return ResponseEntity.ok("지역 데이터 초기화 완료");
     }
+
 
     /**
      * 유틸리티 메서드: IP 주소 추출

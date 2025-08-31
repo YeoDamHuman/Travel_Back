@@ -167,15 +167,15 @@ public class CartController {
     }
 
     @GetMapping("/places/region/theme")
-    @Operation(summary = "지역 및 테마별 장소 검색", description = "법정동 코드와 테마로 장소들 검색")
+    @Operation(summary = "지역 및 테마별 장소 검색", description = "법정동 코드와 contentTypeId로 장소들 검색")
     public ResponseEntity<Page<CartResponse.TourSearchResponse>> getPlacesByRegionAndTheme(
             HttpServletRequest request,
             @Parameter(description = "법정동 시/도 코드 (강원특별자치도=51)", example = "51") 
             @RequestParam String lDongRegnCd,
             @Parameter(description = "법정동 시 코드 (속초시=210)", example = "210") 
             @RequestParam String lDongSignguCd,
-            @Parameter(description = "테마", example = "관광지") 
-            @RequestParam String theme,
+            @Parameter(description = "컨텐츠 타입 ID (12=관광지, 15=축제공연행사, 28=레포츠, 32=숙박, 39=음식점)", example = "12") 
+            @RequestParam Integer contentTypeId,
             @Parameter(description = "페이지 번호", example = "0") 
             @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "페이지 크기", example = "20") 
@@ -187,7 +187,7 @@ public class CartController {
         regionService.incrementViewCountByLDong(lDongRegnCd, lDongSignguCd, ipAddress, userAgent);
         
         Pageable pageable = PageRequest.of(page, size);
-        Page<CartResponse.TourSearchResponse> response = cartService.searchPlacesByLDongAndTheme(lDongRegnCd, lDongSignguCd, theme, pageable);
+        Page<CartResponse.TourSearchResponse> response = cartService.searchPlacesByLDongAndContentType(lDongRegnCd, lDongSignguCd, contentTypeId, pageable);
         return ResponseEntity.ok(response);
     }
 

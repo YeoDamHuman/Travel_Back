@@ -660,15 +660,11 @@ public class TourApiClient {
     }
 
     /**
-     * 법정동 코드와 테마로 장소 검색
+     * 법정동 코드와 contentTypeId로 장소 검색
      */
-    public Page<CartResponse.TourSearchResponse> searchPlacesByLDongAndTheme(String lDongRegnCd, String lDongSignguCd, String theme, Pageable pageable) {
+    public Page<CartResponse.TourSearchResponse> searchPlacesByLDongAndContentType(String lDongRegnCd, String lDongSignguCd, Integer contentTypeId, Pageable pageable) {
         try {
-            log.info("=== 법정동-테마 검색 - lDongRegnCd: {}, lDongSignguCd: {}, theme: {} ===", lDongRegnCd, lDongSignguCd, theme);
-
-            String[] themeCategory = getThemeCategory(theme);
-            String cat1 = themeCategory.length > 0 ? themeCategory[0] : "";
-            String cat2 = themeCategory.length > 1 ? themeCategory[1] : "";
+            log.info("=== 법정동-contentTypeId 검색 - lDongRegnCd: {}, lDongSignguCd: {}, contentTypeId: {} ===", lDongRegnCd, lDongSignguCd, contentTypeId);
 
             String uri = UriComponentsBuilder.fromHttpUrl(baseUrl)
                     .path("/areaBasedList2")
@@ -681,12 +677,11 @@ public class TourApiClient {
                     .queryParam("numOfRows", pageable.getPageSize())
                     .queryParam("lDongRegnCd", lDongRegnCd)
                     .queryParam("lDongSignguCd", lDongSignguCd)
-                    .queryParam("cat1", cat1)
-                    .queryParam("cat2", cat2)
+                    .queryParam("contentTypeId", contentTypeId)
                     .build(false)
                     .toUriString();
 
-            log.info("법정동-테마 검색 URL: {}", uri);
+            log.info("법정동-contentTypeId 검색 URL: {}", uri);
 
             String response = webClient.get()
                     .uri(uri)
@@ -698,7 +693,7 @@ public class TourApiClient {
             return parseSearchResponse(response, pageable);
 
         } catch (Exception e) {
-            log.error("법정동-테마 검색 실패", e);
+            log.error("법정동-contentTypeId 검색 실패", e);
             return Page.empty(pageable);
         }
     }
