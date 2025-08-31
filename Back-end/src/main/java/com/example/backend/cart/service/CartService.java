@@ -196,8 +196,8 @@ public class CartService {
     }
 
     @Transactional(readOnly = true)
-    public Page<CartResponse.TourSearchResponse> searchPlacesByLDongAndTheme(String lDongRegnCd, String lDongSignguCd, String theme, Pageable pageable) {
-        return tourApiClient.searchPlacesByLDongAndTheme(lDongRegnCd, lDongSignguCd, theme, pageable);
+    public Page<CartResponse.TourSearchResponse> searchPlacesByLDongAndContentType(String lDongRegnCd, String lDongSignguCd, Integer contentTypeId, Pageable pageable) {
+        return tourApiClient.searchPlacesByLDongAndContentType(lDongRegnCd, lDongSignguCd, contentTypeId, pageable);
     }
 
     @Transactional(readOnly = true)
