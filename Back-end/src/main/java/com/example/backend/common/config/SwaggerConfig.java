@@ -32,12 +32,7 @@ public class SwaggerConfig {
     @Bean
     public OpenAPI openAPI() {
         SecurityRequirement securityRequirement = new SecurityRequirement().addList("JWT");
-
         return new OpenAPI()
-                .servers(Arrays.asList(
-                        new Server().url("http://yeodam.site").description("도메인 서버"),
-                        new Server().url("http://43.200.227.73:8080").description("실제 서버")
-                ))
                 .addSecurityItem(securityRequirement)
                 .components(new Components());
     }
