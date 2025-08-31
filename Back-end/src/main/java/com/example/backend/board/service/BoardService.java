@@ -53,12 +53,16 @@ public class BoardService {
         return saved.getBoardId();
     }
 
-    //목록 조회
     public List<BoardListResponseDto> getBoardList(int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         Page<Board> boards = boardRepository.findAll(pageable);
 
         return boards.stream().map(board -> {
+            List<String> thumbs = board.getImages().stream()
+                    .limit(3)
+                    .map(BoardImage::getImgUrl)
+                    .toList();
+
             return BoardListResponseDto.builder()
                     .boardId(board.getBoardId())
                     .title(board.getTitle())
@@ -66,8 +70,8 @@ public class BoardService {
                     .userProfileImage(board.getUserId().getUserProfileImage())
                     .createdAt(board.getCreatedAt())
                     .count(board.getCount())
-                    .imageUrl(board.getImages().isEmpty() ? null : board.getImages().get(0).getImgUrl())
                     .tag(board.getTag())
+                    .imageUrls(thumbs)
                     .build();
         }).toList();
     }

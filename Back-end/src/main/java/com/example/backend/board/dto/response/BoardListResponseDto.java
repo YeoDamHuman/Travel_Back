@@ -4,6 +4,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Getter
@@ -16,6 +17,7 @@ public class BoardListResponseDto {
     private LocalDateTime createdAt;
     private int count;
     private String tag;
-    private String imageUrl;
+
+    private List<String> imageUrls;
 }
 
