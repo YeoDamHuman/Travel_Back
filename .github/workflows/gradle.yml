@@ -136,7 +136,7 @@ jobs:
 
             # OpenWeather API
             weather.api.key=${{ secrets.OPENWEATHER_API_KEY }}
-            weather.api.url=http://api.openweathermap.org/data/2.5/weather
+            weather.api.url=/data/2.5/weather
 
             # OpenAPI
             openai.api.key=${{ secrets.OPENAI_API_KEY }}
