@@ -1,10 +1,9 @@
 package com.example.backend.schedule.service;
 
 import com.example.backend.cart.entity.Cart;
-import com.example.backend.cart.service.CartService;
 import com.example.backend.common.auth.AuthUtil;
 import com.example.backend.schedule.dto.request.ScheduleRequest.ScheduleCreateRequest;
-import com.example.backend.schedule.dto.request.ScheduleRequest.scheduleUpdateRequest;
+import com.example.backend.schedule.dto.request.ScheduleRequest.ScheduleUpdateRequest;
 import com.example.backend.schedule.dto.response.ScheduleResponse.scheduleDetailResponse;
 import com.example.backend.schedule.dto.response.ScheduleResponse.scheduleInfo;
 import com.example.backend.schedule.dto.response.ScheduleResponse.scheduleItemInfo;
@@ -63,7 +62,7 @@ public class ScheduleService {
         Schedule savedSchedule = scheduleRepository.save(ScheduleCreateRequest.toEntity(request, group, user, cart));
         List<ScheduleItem> scheduleItems = request.getScheduleItem().stream()
                 .map(itemDto -> ScheduleItem.builder()
-                        .contentId(itemDto.getContentId())
+                        .contentId(UUID.fromString(itemDto.getContentId()))
                         .cost(itemDto.getCost())
                         .scheduleId(savedSchedule)
                         .build())
@@ -88,21 +87,17 @@ public class ScheduleService {
     /**
      * 기존 스케줄의 정보를 업데이트합니다.
      *
-     * @param request 업데이트할 스케줄의 ID와 새로운 정보가 담긴 {@link scheduleUpdateRequest} 객체.
+     * @param request 업데이트할 스케줄의 ID와 새로운 정보가 담긴 {@link ScheduleUpdateRequest} 객체.
      * @return 업데이트된 스케줄의 ID.
      */
     @Transactional
-    public UUID updateSchedule(scheduleUpdateRequest request) {
+    public UUID updateSchedule(ScheduleUpdateRequest request) {
         UUID currentUserId = getCurrentUserId();
         scheduleFilter.validateScheduleAccess(request.getScheduleId(), currentUserId);
         Schedule schedule = scheduleRepository.findById(request.getScheduleId())
                 .orElseThrow(() -> new IllegalArgumentException("수정하려는 스케줄을 찾을 수 없습니다."));
-        if (request.getScheduleType() == ScheduleType.GROUP && request.getGroupId() == null) {
-            throw new IllegalArgumentException("그룹 스케줄 수정 시 groupId는 필수입니다.");
-        } else if (request.getScheduleType() == ScheduleType.PERSONAL && request.getGroupId() != null) {
-            throw new IllegalArgumentException("개인 스케줄 수정 시 groupId는 null이어야 합니다.");
-        }
-        scheduleRepository.save(schedule);
+        Group group = scheduleFilter.validateScheduleRequest(request.getScheduleType(), request.getGroupId());
+        scheduleRepository.save(ScheduleUpdateRequest.toEntity(request, schedule, group));
         return schedule.getScheduleId();
     }
 
@@ -158,6 +153,7 @@ public class ScheduleService {
                             .groupName(responseGroupName)
                             .userId(schedule.getUserId().getUserId())
                             .scheduleType(schedule.getScheduleType().name())
+                            .scheduleStyle(schedule.getScheduleStyle())
                             .build();
                 })
                 .collect(Collectors.toList());

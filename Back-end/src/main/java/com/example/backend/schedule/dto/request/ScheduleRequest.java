@@ -63,7 +63,7 @@ public class ScheduleRequest {
         @AllArgsConstructor
         public static class Items {
             @Schema(description = "콘텐츠 ID", example = "abcd1234")
-            private UUID contentId;
+            private String contentId;
             @Schema(description = "비용", example = "12000")
             private int cost;
         }
@@ -72,7 +72,7 @@ public class ScheduleRequest {
     @Getter
     @Builder
     @AllArgsConstructor
-    public static class scheduleUpdateRequest {
+    public static class ScheduleUpdateRequest {
         @Schema(description = "스케쥴 아이디", example = "123e4567-e89b-12d3-a456-426614174000")
         private UUID scheduleId;
         @Schema(description = "스케줄 이름", example = "여름 휴가 계획")
@@ -87,35 +87,32 @@ public class ScheduleRequest {
         private UUID groupId;
         @Schema(description = "스케줄 타입 (PERSONAL, GROUP 중 하나)", example = "GROUP")
         private ScheduleType scheduleType;
+        @Schema(description = "스케쥴 스타일", example = "휴양")
+        private String scheduleStyle;
+
+        public static Schedule toEntity(ScheduleUpdateRequest request, Schedule schedule, Group group) {
+            return Schedule.builder()
+                    .scheduleId(schedule.getScheduleId())
+                    .budget(request.budget)
+                    .createdAt(schedule.getCreatedAt())
+                    .endDate(request.getEndDate())
+                    .scheduleName(request.getScheduleName())
+                    .scheduleStyle(request.getScheduleStyle())
+                    .scheduleType(request.getScheduleType())
+                    .startDate(request.getStartDate())
+                    .cartId(schedule.getCartId())
+                    .userId(schedule.getUserId())
+                    .groupId(group)
+                    .build();
+        }
     }
 
     @Getter
     @Builder
     @AllArgsConstructor
-    public static class scheduleDeleteRequest {
+    public static class ScheduleDeleteRequest {
         @Schema(description = "스케쥴 아이디", example = "123e4567-e89b-12d3-a456-426614174000")
         private UUID scheduleId;
     }
 
-    @Getter
-    @Builder
-    @AllArgsConstructor
-    public static class OptimizeRouteRequest {
-        @Schema(description = "경로 최적화 타입 (예: 최단 거리, 최소 시간 등)", example = "최단 거리")
-        private String optimizationType;
-        @Schema(description = "경로 최적화에 대한 선호 옵션")
-        private Preferences preferences;
-    }
-
-    @Getter
-    @AllArgsConstructor
-    @Builder
-    public static class Preferences {
-        @Schema(description = "교통수단 타입 (예: 자동차, 도보, 대중교통)", example = "자동차")
-        private String transportationType;
-        @Schema(description = "톨게이트 우회 여부", example = "true")
-        private boolean avoidTolls;
-        @Schema(description = "휴게소 포함 여부", example = "false")
-        private boolean includeRestStops;
-    }
 }
