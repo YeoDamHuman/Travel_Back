@@ -35,6 +35,12 @@ public interface RegionRepository extends JpaRepository<Region, Long> {
     List<Region> findTopCitiesByViewCount(Pageable pageable);
 
     /**
+     * 전체 지역 조회 - 시 단위만 (군 단위 제외)
+     */
+    @Query("SELECT r FROM Region r WHERE r.regionName LIKE '%시' ORDER BY r.regionName ASC")
+    List<Region> findAllCities();
+
+    /**
      * 동시성 처리를 위한 비관적 락으로 지역 조회
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
@@ -54,4 +60,5 @@ public interface RegionRepository extends JpaRepository<Region, Long> {
     @Modifying
     @Query("UPDATE Region r SET r.viewCount = r.viewCount + 1, r.lastViewedAt = CURRENT_TIMESTAMP WHERE r.lDongRegnCd = :lDongRegnCd AND r.lDongSignguCd = :lDongSignguCd")
     int incrementViewCountByLDong(@Param("lDongRegnCd") String lDongRegnCd, @Param("lDongSignguCd") String lDongSignguCd);
+
 }

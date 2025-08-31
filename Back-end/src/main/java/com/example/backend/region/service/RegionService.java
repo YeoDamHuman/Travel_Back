@@ -31,7 +31,7 @@ public class RegionService {
 
     @Transactional(readOnly = true)
     public RegionResponse.RegionListResponse getAllRegions() {
-        List<Region> regions = regionRepository.findAll();
+        List<Region> regions = regionRepository.findAllCities();
         
         List<RegionResponse.RegionInfo> regionInfos = regions.stream()
                 .map(this::convertToRegionInfo)
@@ -175,7 +175,7 @@ public class RegionService {
      */
     @Transactional(readOnly = true)
     public RegionResponse.HotRegionListResponse getHotRegions(int limit) {
-        Pageable pageable = PageRequest.of(0, Math.min(limit, 20)); // 최대 20개 제한
+        Pageable pageable = PageRequest.of(0, limit);
         List<Region> hotRegions = regionRepository.findTopCitiesByViewCount(pageable);
         
         List<RegionResponse.HotRegionInfo> hotRegionInfos = hotRegions.stream()
@@ -219,4 +219,5 @@ public class RegionService {
     public void initializeRegions() {
         regionInitService.refreshRegions();
     }
+
 }
