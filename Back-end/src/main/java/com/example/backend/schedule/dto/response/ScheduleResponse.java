@@ -54,6 +54,8 @@ public class ScheduleResponse {
         private UUID userId;
         @Schema(description = "스케줄 타입", example = "GROUP")
         private String scheduleType;
+        @Schema(description = "스케쥴 스타일", example = "휴양")
+        private String scheduleStyle;
     }
 
     @Getter
