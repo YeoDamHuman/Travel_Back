@@ -35,7 +35,7 @@ public class SwaggerConfig {
 
         return new OpenAPI()
                 .servers(Arrays.asList(
-                        new Server().url("http://localhost:8080").description("로컬 서버"), // 기존 개발용 서버
+                        new Server().url("http://yeodam.site").description("도메인 서버"),
                         new Server().url("http://43.200.227.73:8080").description("실제 서버")
                 ))
                 .addSecurityItem(securityRequirement)
