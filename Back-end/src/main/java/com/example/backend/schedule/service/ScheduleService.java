@@ -234,7 +234,7 @@ public class ScheduleService {
                         List<ScheduleItem> updatedItems = new ArrayList<>();
 
                         for (Map<String, Object> itemData : optimizedItems) {
-                            UUID contentId = UUID.fromString((String) itemData.get("contentId"));
+                            String contentId = itemData.get("contentId").toString();
                             int order = (int) itemData.get("order");
                             int dayNumber = (int) itemData.get("dayNumber");
                             String startTimeStr = (String) itemData.get("start_time");
