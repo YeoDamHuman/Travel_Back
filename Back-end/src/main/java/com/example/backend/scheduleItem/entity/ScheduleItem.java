@@ -21,8 +21,8 @@ public class ScheduleItem {
     @Column(name = "schedule_item_id", columnDefinition = "BINARY(16)")
     private UUID scheduleItemId;
 
-    @Column(name = "content_id" , nullable = false, columnDefinition = "BINARY(16)")
-    private UUID contentId;
+    @Column(name = "content_id" , nullable = false, length = 100)
+    private String contentId;
 
     @Column(name = "day_number", nullable = true)
     private int dayNumber;
