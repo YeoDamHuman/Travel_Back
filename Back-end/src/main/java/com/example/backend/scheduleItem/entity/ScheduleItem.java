@@ -39,7 +39,7 @@ public class ScheduleItem {
     @Column(name = "cost", nullable = false)
     private int cost;
 
-    @Column(name = "order", nullable = true)
+    @Column(name = "`order`", nullable = true)
     private int order;
 
     @ManyToOne(fetch = FetchType.LAZY)
