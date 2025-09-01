@@ -1,9 +1,11 @@
 package com.example.backend.user.entity;
+import com.example.backend.cart.entity.Cart;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -45,6 +47,9 @@ public class User {
     @Enumerated(EnumType.STRING)
     @Column(name = "user_role", length = 20, nullable = false)
     private Role userRole = Role.USER;  // 기본값 USER로 설정
+
+    @OneToMany(mappedBy = "userId")
+    private List<Cart> carts;
 
     public enum Role {
         USER,

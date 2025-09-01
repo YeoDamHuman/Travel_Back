@@ -12,7 +12,8 @@ public class CartResponse {
     @AllArgsConstructor
     public static class CartDetailResponse {
         private UUID cartId;
-        private String region;
+        private String lDongRegnCd;
+        private String lDongSignguCd;
         private java.util.List<TourInfo> tours;
         private int totalCount;
         private long totalPrice;

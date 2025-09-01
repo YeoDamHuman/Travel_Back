@@ -21,11 +21,14 @@ public class Cart {
     @Column(name = "cart_id", columnDefinition = "BINARY(16)", nullable = false)
     private UUID cartId;
 
-    @Column(name = "region", length = 255, nullable = false)
-    private String region;
+    @Column(name = "l_dong_regn_cd", length = 10, nullable = false)
+    private String lDongRegnCd;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
+    @Column(name = "l_dong_signgu_cd", length = 10, nullable = false)
+    private String lDongSignguCd;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", unique = false)
     private User userId;
 
     @Column(name = "budget")
