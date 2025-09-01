@@ -81,7 +81,7 @@ public class CartService {
                 .totalCount(tourInfos.size())
                 .totalPrice(totalPrice)
                 .build();
-    }
+    } 
 
     @Transactional
     public CartResponse.AddTourResponse addTourToCart(String userIdString, CartResponse.TourSearchResponse tourResponse) {
