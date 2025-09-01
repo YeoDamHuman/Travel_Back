@@ -58,7 +58,7 @@ public class ScheduleService {
     public UUID createSchedule(ScheduleCreateRequest request) {
         User user = AuthUtil.getCurrentUser(userRepository);
         Group group = scheduleFilter.validateScheduleRequest(request.getScheduleType(), request.getGroupId());
-        Cart cart = scheduleFilter.validateCartExistence(user.getUserId());
+        Cart cart = scheduleFilter.validateCartExistence(request.getCartId());
         Schedule savedSchedule = scheduleRepository.save(ScheduleCreateRequest.toEntity(request, group, user, cart));
         List<ScheduleItem> scheduleItems = request.getScheduleItem().stream()
                 .map(itemDto -> ScheduleItem.builder()
