@@ -114,5 +114,5 @@ public class AiService {
         return content;
     }
 
-    private record ScheduleItemInfo(UUID contentId) {}
+    private record ScheduleItemInfo(String contentId) {}
 }

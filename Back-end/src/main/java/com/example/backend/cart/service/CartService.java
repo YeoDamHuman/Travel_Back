@@ -327,6 +327,7 @@ public class CartService {
         return "기타";
     }
 
+
     @Transactional
     public CartResponse.CartDetailResponse createCart(String userIdString, String lDongRegnCd, String lDongSignguCd) {
         UUID userId = UUID.fromString(userIdString);
@@ -541,5 +542,11 @@ public class CartService {
                 .tourId(savedTour.getTourId())
                 .message("투어가 장바구니에 추가되었습니다.")
                 .build();
+
+    @Transactional(readOnly = true)
+    public Cart findCartById(UUID cartId) {
+        return cartRepository.findById(cartId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 장바구니입니다. cartId: " + cartId));
+
     }
 }
