@@ -52,14 +52,17 @@ public class CartController {
     }
 
 
-    @DeleteMapping("/cart/tours/{tourId}")
+    @DeleteMapping("/carts/{cartId}/tours/{tourId}")
     @Operation(summary = "장바구니에서 투어 삭제",
-            description = "장바구니에서 특정 투어 삭제",
+            description = "특정 장바구니에서 특정 투어 삭제",
             security = @SecurityRequirement(name = "JWT"))
     public ResponseEntity<Void> removeTourFromCart(
             @AuthenticationPrincipal UserDetails userDetails,
+            @Parameter(description = "장바구니 ID")
+            @PathVariable UUID cartId,
+            @Parameter(description = "투어 ID")
             @PathVariable UUID tourId) {
-        cartService.removeTourFromCart(userDetails.getUsername(), tourId);
+        cartService.removeTourFromCart(userDetails.getUsername(), cartId, tourId);
         return ResponseEntity.noContent().build();
     }
 

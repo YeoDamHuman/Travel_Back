@@ -81,7 +81,7 @@ public class CartService {
                 .totalCount(tourInfos.size())
                 .totalPrice(totalPrice)
                 .build();
-    } 
+    }
 
     @Transactional
     public CartResponse.AddTourResponse addTourToCart(String userIdString, CartResponse.TourSearchResponse tourResponse) {
@@ -152,16 +152,16 @@ public class CartService {
     }
 
     @Transactional
-    public void removeTourFromCart(String userIdString, UUID tourId) {
+    public void removeTourFromCart(String userIdString, UUID cartId, UUID tourId) {
         UUID userId = UUID.fromString(userIdString);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
-        Cart cart = cartRepository.findByUserId(user)
+        Cart cart = cartRepository.findByCartIdAndUserId(cartId, user)
                 .orElseThrow(() -> new IllegalArgumentException("장바구니를 찾을 수 없습니다."));
 
         tourRepository.deleteByCartIdAndTourId(cart, tourId);
-        log.info("투어 삭제 완료 - tourId: {}", tourId);
+        log.info("투어 삭제 완료 - cartId: {}, tourId: {}", cartId, tourId);
     }
 
     @Transactional
