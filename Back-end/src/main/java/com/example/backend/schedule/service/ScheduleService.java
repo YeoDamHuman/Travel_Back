@@ -62,7 +62,7 @@ public class ScheduleService {
         Schedule savedSchedule = scheduleRepository.save(ScheduleCreateRequest.toEntity(request, group, user, cart));
         List<ScheduleItem> scheduleItems = request.getScheduleItem().stream()
                 .map(itemDto -> ScheduleItem.builder()
-                        .contentId(UUID.fromString(itemDto.getContentId()))
+                        .contentId(itemDto.getContentId())
                         .cost(itemDto.getCost())
                         .scheduleId(savedSchedule)
                         .build())
@@ -178,7 +178,7 @@ public class ScheduleService {
         List<scheduleItemInfo> itemsDto = scheduleItems.stream()
                 .map(item -> scheduleItemInfo.builder()
                         .scheduleItemId(item.getScheduleItemId())
-                        .placeId(item.getContentId())
+                        .contentId(item.getContentId())
                         .dayNumber(item.getDayNumber())
                         .startTime(item.getStartTime())
                         .endTime(item.getEndTime())

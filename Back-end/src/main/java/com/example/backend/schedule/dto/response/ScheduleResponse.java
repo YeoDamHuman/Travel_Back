@@ -87,7 +87,7 @@ public class ScheduleResponse {
         @Schema(description = "아이템 ID", example = "d3f12c9b-4567-4d89-9a12-c3b4d6a7f456")
         private UUID scheduleItemId;
         @Schema(description = "장소 ID", example = "a1b2c3d4-5678-9101-1121-314151617181")
-        private UUID placeId;
+        private String contentId;
         @Schema(description = "일차 번호", example = "1")
         private Integer dayNumber;
         @Schema(description = "시작 시간", example = "10:00:00")
