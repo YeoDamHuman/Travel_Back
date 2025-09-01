@@ -2,16 +2,15 @@ package com.example.backend.schedule.entity;
 
 import com.example.backend.cart.entity.Cart;
 import com.example.backend.group.entity.Group;
-import com.example.backend.schedule.dto.request.ScheduleRequest;
 import com.example.backend.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-
 import java.math.BigInteger;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.UUID;
 
 @Entity
@@ -46,6 +45,15 @@ public class Schedule {
 
     @Column(name = "budget", nullable = false)
     private BigInteger budget;
+
+    @Column(name = "scheduleStyle", nullable = false)
+    private String scheduleStyle;
+
+    @Column(name = "startPlace", nullable = false)
+    private String startPlace;
+
+    @Column(name = "startTime", nullable = false)
+    private LocalTime startTime;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "group_id", nullable = true)

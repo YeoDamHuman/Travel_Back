@@ -1,5 +1,7 @@
 package com.example.backend.schedule.filter;
 
+import com.example.backend.cart.entity.Cart;
+import com.example.backend.cart.service.CartService;
 import com.example.backend.common.auth.AuthUtil;
 import com.example.backend.group.entity.Group;
 import com.example.backend.group.service.GroupService;
@@ -22,6 +24,7 @@ public class ScheduleFilter {
 
     private final GroupService groupService;
     private final ScheduleRepository scheduleRepository;
+    private final CartService cartService;
 
     /**
      * 스케줄 생성 요청의 유효성을 검증합니다.
@@ -106,5 +109,9 @@ public class ScheduleFilter {
             throw new IllegalStateException("해당 그룹의 멤버가 아닙니다. 그룹 스케줄을 조회할 수 없습니다.");
         }
         return group;
+    }
+
+    public Cart validateCartExistence(UUID cartId) {
+        return cartService.findCartById(cartId);
     }
 }

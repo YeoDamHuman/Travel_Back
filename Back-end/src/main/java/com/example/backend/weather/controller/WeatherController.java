@@ -22,7 +22,7 @@ public class WeatherController {
     @GetMapping("/current")
     @Operation(summary = "도시별 현재 날씨 조회",
             description = "도시 이름을 입력 받아 OpenWeatherMap API에서 현재 날씨 정보를 조회합니다.")
-    public Mono<WeatherResponse.weatherDataResponse> getWeatherByCity(@RequestParam String city) {
-        return weatherService.getWeatherByCity(city);
+    public Mono<WeatherResponse.weatherDataResponse> getCurrentAndDailyWeather(@RequestParam String city) {
+        return weatherService.getCurrentAndDailyWeather(city);
     }
 }

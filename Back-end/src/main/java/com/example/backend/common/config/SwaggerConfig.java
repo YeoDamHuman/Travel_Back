@@ -32,12 +32,7 @@ public class SwaggerConfig {
     @Bean
     public OpenAPI openAPI() {
         SecurityRequirement securityRequirement = new SecurityRequirement().addList("JWT");
-
         return new OpenAPI()
-                .servers(Arrays.asList(
-                        new Server().url("http://localhost:8080").description("로컬 서버"), // 기존 개발용 서버
-                        new Server().url("http://124.49.210.216").description("실제 서버")
-                ))
                 .addSecurityItem(securityRequirement)
                 .components(new Components());
     }
