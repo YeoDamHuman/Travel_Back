@@ -39,6 +39,8 @@ public class ScheduleRequest {
         private String startPlace;
         @Schema(description = "출발 시간", example = "09:00")
         private LocalTime startTime;
+        @Schema(description = "카트 ID", example = "a3f12c9b-4567-4d89-9a12-c3b4d6a7f123")
+        private UUID CartId;
         @Schema(description = "일정 아이템 목록")
         private List<Items> scheduleItem;
 
