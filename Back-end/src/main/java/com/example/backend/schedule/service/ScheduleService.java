@@ -15,6 +15,7 @@ import com.example.backend.schedule.entity.ScheduleType;
 import com.example.backend.schedule.repository.ScheduleRepository;
 import com.example.backend.scheduleItem.entity.ScheduleItem;
 import com.example.backend.scheduleItem.repository.ScheduleItemRepository;
+import com.example.backend.tour.webclient.TourApiClient;
 import com.example.backend.user.entity.User;
 import com.example.backend.user.repository.UserRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -47,6 +48,7 @@ public class ScheduleService {
     private final ScheduleItemService scheduleItemService;
     private final AiService aiService;
     private final ObjectMapper objectMapper;
+    private final TourApiClient tourApiClient;
 
     /**
      * 새로운 스케줄을 생성하고 스케줄 아이템들을 저장합니다.
@@ -175,16 +177,27 @@ public class ScheduleService {
 
         List<ScheduleItem> scheduleItems = scheduleItemRepository.findAllByScheduleId_ScheduleId(scheduleId);
 
+        List<String> contentIds = scheduleItems.stream()
+                .map(ScheduleItem::getContentId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+
+        Map<String, String> tourTitlesMap = tourApiClient.getTourTitlesMapByContentIds(contentIds);
         List<scheduleItemInfo> itemsDto = scheduleItems.stream()
-                .map(item -> scheduleItemInfo.builder()
-                        .scheduleItemId(item.getScheduleItemId())
-                        .contentId(item.getContentId())
-                        .dayNumber(item.getDayNumber())
-                        .startTime(item.getStartTime())
-                        .endTime(item.getEndTime())
-                        .memo(item.getMemo())
-                        .cost(item.getCost())
-                        .build())
+                .map(item -> {
+                    String title = tourTitlesMap.getOrDefault(item.getContentId(), "장소 이름 없음");
+                    return scheduleItemInfo.builder()
+                            .scheduleItemId(item.getScheduleItemId())
+                            .contentId(item.getContentId())
+                            .title(title)
+                            .dayNumber(item.getDayNumber())
+                            .startTime(item.getStartTime())
+                            .endTime(item.getEndTime())
+                            .memo(item.getMemo())
+                            .cost(item.getCost())
+                            .build();
+                })
                 .collect(Collectors.toList());
 
         return scheduleDetailResponse.builder()
