@@ -1,6 +1,5 @@
 package com.example.backend.schedule.service;
 
-import com.example.backend.scheduleItem.entity.ScheduleItem;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -29,10 +28,14 @@ public class AiService {
     @Value("${openai.api.key}")
     private String openAiApiKey;
 
-    public Mono<String> getOptimizedRouteJson(UUID scheduleId, LocalDate startDate, LocalDate endDate, List<ScheduleItem> items) {
+    // 💡 1. ScheduleService에서 사용할 수 있도록 public record로 DTO를 정의합니다.
+    public record ItemWithLocationInfo(String contentId, double latitude, double longitude) {}
+
+    // 💡 2. 메서드의 파라미터를 `List<ScheduleItem>`에서 `List<ItemWithLocationInfo>`로 변경합니다.
+    public Mono<String> getOptimizedRouteJson(UUID scheduleId, LocalDate startDate, LocalDate endDate, List<ItemWithLocationInfo> itemsWithLocation) {
         log.info("🚀 AI 경로 최적화 시작 - Schedule ID: {}", scheduleId);
 
-        String prompt = createOptimizationPrompt(scheduleId, startDate, endDate, items);
+        String prompt = createOptimizationPrompt(scheduleId, startDate, endDate, itemsWithLocation);
         log.debug("🤖 생성된 프롬프트: \n{}", prompt);
 
         Map<String, Object> requestBody = Map.of(
@@ -40,12 +43,6 @@ public class AiService {
                 "messages", List.of(Map.of("role", "user", "content", prompt)),
                 "response_format", Map.of("type", "json_object")
         );
-
-        try {
-            log.debug("➡️ OpenAI API 요청 본문: {}", objectMapper.writeValueAsString(requestBody));
-        } catch (JsonProcessingException e) {
-            log.warn("API 요청 본문 JSON 변환 실패 (로깅 목적)", e);
-        }
 
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(openAiApiKey);
@@ -72,15 +69,14 @@ public class AiService {
                 });
     }
 
-    private String createOptimizationPrompt(UUID scheduleId, LocalDate startDate, LocalDate endDate, List<ScheduleItem> items) {
+    // 💡 3. 프롬프트 생성 메서드도 변경된 파라미터를 받도록 수정합니다.
+    private String createOptimizationPrompt(UUID scheduleId, LocalDate startDate, LocalDate endDate, List<ItemWithLocationInfo> items) {
         log.info("프롬프트 생성을 시작합니다...");
-        List<ScheduleItemInfo> itemInfos = items.stream()
-                .map(item -> new ScheduleItemInfo(item.getContentId()))
-                .collect(Collectors.toList());
 
         String itemsJson;
         try {
-            itemsJson = objectMapper.writeValueAsString(itemInfos);
+            // 이제 items 리스트에 이미 위도, 경도가 포함되어 있으므로 바로 JSON으로 변환합니다.
+            itemsJson = objectMapper.writeValueAsString(items);
             log.debug("직렬화된 스케줄 아이템 JSON: {}", itemsJson);
         } catch (JsonProcessingException e) {
             log.error("스케줄 아이템 JSON 직렬화 실패", e);
@@ -90,11 +86,15 @@ public class AiService {
         return String.format("""
             너는 여행 경로 최적화 전문가야.
             아래 정보를 참고해서 일정 아이템들의 효율적인 '순서(order)'를 정렬하고, 각 아이템이 어느 '몇일차(dayNumber)'에 속하는지 할당하고, 적절한 'start_time'과 'end_time'도 할당해줘.
+            각 장소의 위도(latitude)와 경도(longitude)를 참고해서 이동 시간을 고려한 최적의 경로를 짜줘.
+            
+            **중요: 이 장소 목록에는 관광지뿐만 아니라 '숙소'가 포함될 수 있어. 만약 숙소가 있다면, 해당 날짜 일정의 마지막 지점으로 설정하는 것이 가장 자연스러워. 전체적인 동선을 고려하여 모든 장소를 효율적으로 방문할 수 있는 일정을 만들어줘.**
+            
             시간은 24시간 형식(HH:mm)으로 반환해줘.
             여행 기간은 %s 부터 %s 까지야.
             
             📌 스케줄 ID: %s
-            📌 현재 스케줄 아이템 리스트:
+            📌 현재 스케줄 아이템 리스트 (위도/경도 포함):
             %s
             
             아래 JSON 구조를 절대 변경하지 말고, 다른 필드는 절대 넣지 말고,
@@ -143,6 +143,4 @@ public class AiService {
         log.info("content 추출을 완료했습니다.");
         return content;
     }
-
-    private record ScheduleItemInfo(String contentId) {}
 }

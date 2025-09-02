@@ -196,6 +196,7 @@ public class ScheduleService {
                             .endTime(item.getEndTime())
                             .memo(item.getMemo())
                             .cost(item.getCost())
+                            .order(item.getOrder())
                             .build();
                 })
                 .collect(Collectors.toList());
@@ -233,8 +234,27 @@ public class ScheduleService {
             throw new IllegalArgumentException("해당 스케줄에 아이템이 없습니다.");
         }
 
-        // AI 서비스 호출 후 .block()을 사용해 동기적으로 결과를 기다립니다.
-        String optimizedJson = aiService.getOptimizedRouteJson(schedule.getScheduleId(), schedule.getStartDate(), schedule.getEndDate(), items)
+        // 💡 1. contentId 목록 추출
+        List<String> contentIds = items.stream()
+                .map(ScheduleItem::getContentId)
+                .distinct()
+                .collect(Collectors.toList());
+
+        // 💡 2. TourApiClient를 통해 위도/경도 정보 조회 (Map<String, Map<String, Double>> 형태)
+        Map<String, Map<String, Double>> locationMap = tourApiClient.getTourLocationMapByContentIds(contentIds);
+
+        // 💡 3. AiService에 전달할 데이터 목록 생성 (아이템 정보 + 위치 정보)
+        List<AiService.ItemWithLocationInfo> itemsWithLocation = items.stream()
+                .map(item -> {
+                    Map<String, Double> loc = locationMap.getOrDefault(item.getContentId(), Collections.emptyMap());
+                    double latitude = loc.getOrDefault("latitude", 0.0);
+                    double longitude = loc.getOrDefault("longitude", 0.0);
+                    return new AiService.ItemWithLocationInfo(item.getContentId(), latitude, longitude);
+                })
+                .collect(Collectors.toList());
+
+        // 💡 4. 위도/경도 정보와 함께 AiService 호출
+        String optimizedJson = aiService.getOptimizedRouteJson(schedule.getScheduleId(), schedule.getStartDate(), schedule.getEndDate(), itemsWithLocation)
                 .block();
 
         // Mono의 flatMap 대신, block()으로 얻은 결과를 직접 처리합니다.
