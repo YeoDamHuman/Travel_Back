@@ -2,6 +2,7 @@ package com.example.backend.schedule.service;
 
 import com.example.backend.cart.entity.Cart;
 import com.example.backend.common.auth.AuthUtil;
+import com.example.backend.region.service.RegionService;
 import com.example.backend.schedule.dto.request.ScheduleRequest.ScheduleCreateRequest;
 import com.example.backend.schedule.dto.request.ScheduleRequest.ScheduleUpdateRequest;
 import com.example.backend.schedule.dto.response.ScheduleResponse.scheduleDetailResponse;
@@ -25,7 +26,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import reactor.core.publisher.Mono;
 import java.time.LocalTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -49,7 +49,7 @@ public class ScheduleService {
     private final AiService aiService;
     private final ObjectMapper objectMapper;
     private final TourApiClient tourApiClient;
-
+    private final RegionService regionService;
     /**
      * 새로운 스케줄을 생성하고 스케줄 아이템들을 저장합니다.
      *
@@ -167,7 +167,7 @@ public class ScheduleService {
      * @param scheduleId 상세 정보를 조회할 스케줄의 ID.
      * @return 스케줄의 상세 정보와 포함된 스케줄 아이템 목록이 담긴 {@link scheduleDetailResponse} 객체.
      */
-    @Transactional
+    @Transactional(readOnly = true)
     public scheduleDetailResponse getScheduleDetail(UUID scheduleId) {
         UUID currentUserId = getCurrentUserId();
         scheduleFilter.validateScheduleAccess(scheduleId, currentUserId);
@@ -183,13 +183,40 @@ public class ScheduleService {
                 .distinct()
                 .collect(Collectors.toList());
 
+        // 💡 1. Tour 정보 일괄 조회 (제목, 테마, 지역 코드 등)
         Map<String, String> tourTitlesMap = tourApiClient.getTourTitlesMapByContentIds(contentIds);
+        Map<String, Map<String, String>> tourExtraInfoMap = tourApiClient.getTourExtraInfoMapByContentIds(contentIds);
+
+        // 💡 2. 지역명 조회를 위한 코드 쌍(CodePair) 리스트 준비
+        List<RegionService.CodePair> codePairsToSearch = tourExtraInfoMap.values().stream()
+                .map(info -> new RegionService.CodePair(
+                        info.get("lDongRegnCd"),
+                        info.get("lDongSignguCd")
+                ))
+                .filter(pair -> pair.lDongRegnCd() != null && !pair.lDongRegnCd().isEmpty())
+                .distinct()
+                .collect(Collectors.toList());
+
+        // 💡 3. Region 정보 일괄 조회 (지역명)
+        Map<String, String> regionNameMap = regionService.getRegionNamesByCodePairs(codePairsToSearch);
+
         List<scheduleItemInfo> itemsDto = scheduleItems.stream()
                 .map(item -> {
-                    String title = tourTitlesMap.getOrDefault(item.getContentId(), "장소 이름 없음");
+                    String contentId = item.getContentId();
+                    String title = tourTitlesMap.getOrDefault(contentId, "장소 이름 없음");
+
+                    Map<String, String> extraInfo = tourExtraInfoMap.getOrDefault(contentId, Collections.emptyMap());
+                    String tema = extraInfo.getOrDefault("tema", "");
+                    String lDongRegnCd = extraInfo.getOrDefault("lDongRegnCd", "");
+                    String lDongSignguCd = extraInfo.getOrDefault("lDongSignguCd", "");
+
+                    // 💡 4. 조회해온 지역명 맵에서 최종 지역명 찾기
+                    String regionKey = lDongRegnCd + "_" + lDongSignguCd;
+                    String region = regionNameMap.getOrDefault(regionKey, "");
+
                     return scheduleItemInfo.builder()
                             .scheduleItemId(item.getScheduleItemId())
-                            .contentId(item.getContentId())
+                            .contentId(contentId)
                             .title(title)
                             .dayNumber(item.getDayNumber())
                             .startTime(item.getStartTime())
@@ -197,6 +224,8 @@ public class ScheduleService {
                             .memo(item.getMemo())
                             .cost(item.getCost())
                             .order(item.getOrder())
+                            .tema(tema)
+                            .regionName(region)
                             .build();
                 })
                 .collect(Collectors.toList());
@@ -215,7 +244,6 @@ public class ScheduleService {
 
     /**
      * AI 서비스를 활용하여 스케줄의 경로를 최적화합니다.
-     * <p>
      * AI로부터 최적화된 경로(JSON 형식)를 받아와 스케줄 아이템들을 업데이트하고 DB에 저장합니다.
      *
      * @param scheduleId 최적화할 스케줄의 ID.
@@ -234,16 +262,13 @@ public class ScheduleService {
             throw new IllegalArgumentException("해당 스케줄에 아이템이 없습니다.");
         }
 
-        // 💡 1. contentId 목록 추출
         List<String> contentIds = items.stream()
                 .map(ScheduleItem::getContentId)
                 .distinct()
                 .collect(Collectors.toList());
 
-        // 💡 2. TourApiClient를 통해 위도/경도 정보 조회 (Map<String, Map<String, Double>> 형태)
         Map<String, Map<String, Double>> locationMap = tourApiClient.getTourLocationMapByContentIds(contentIds);
 
-        // 💡 3. AiService에 전달할 데이터 목록 생성 (아이템 정보 + 위치 정보)
         List<AiService.ItemWithLocationInfo> itemsWithLocation = items.stream()
                 .map(item -> {
                     Map<String, Double> loc = locationMap.getOrDefault(item.getContentId(), Collections.emptyMap());
@@ -253,11 +278,9 @@ public class ScheduleService {
                 })
                 .collect(Collectors.toList());
 
-        // 💡 4. 위도/경도 정보와 함께 AiService 호출
         String optimizedJson = aiService.getOptimizedRouteJson(schedule.getScheduleId(), schedule.getStartDate(), schedule.getEndDate(), itemsWithLocation)
                 .block();
 
-        // Mono의 flatMap 대신, block()으로 얻은 결과를 직접 처리합니다.
         try {
             Map<String, Object> responseMap = objectMapper.readValue(optimizedJson, new TypeReference<>() {});
             List<Map<String, Object>> optimizedItems = (List<Map<String, Object>>) responseMap.get("ScheduleItems");

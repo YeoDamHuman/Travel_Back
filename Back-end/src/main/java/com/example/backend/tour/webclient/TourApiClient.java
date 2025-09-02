@@ -842,4 +842,30 @@ public class TourApiClient {
                         }
                 ));
     }
+
+    /**
+     * contentId 리스트로 Tour의 추가 정보(테마, 법정동 코드) Map을 조회합니다. (DB 사용)
+     * @param contentIds 조회할 Tour의 contentId 목록
+     * @return Map<contentId, Map<"tema", "lDongRegnCd", "lDongSignguCd">> 형태의 추가 정보
+     */
+    public Map<String, Map<String, String>> getTourExtraInfoMapByContentIds(List<String> contentIds) {
+        if (contentIds == null || contentIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        List<Tour> tours = tourRepository.findByContentIdIn(contentIds);
+
+        return tours.stream()
+                .collect(Collectors.toMap(
+                        Tour::getContentId,
+                        tour -> {
+                            Map<String, String> extraInfo = new HashMap<>();
+                            extraInfo.put("tema", tour.getTema() != null ? tour.getTema() : "");
+                            extraInfo.put("lDongRegnCd", tour.getLDongRegnCd() != null ? tour.getLDongRegnCd() : "");
+                            extraInfo.put("lDongSignguCd", tour.getLDongSignguCd() != null ? tour.getLDongSignguCd() : "");
+                            return extraInfo;
+                        },
+                        (existingValue, newValue) -> existingValue // 중복 키 발생 시 기존 값을 사용
+                ));
+    }
 }

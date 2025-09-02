@@ -10,8 +10,14 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * 스케줄 관련 API 응답을 위한 DTO 클래스들을 포함합니다.
+ */
 public class ScheduleResponse {
 
+    /**
+     * 스케줄 생성 응답 DTO입니다.
+     */
     @Getter
     @Builder
     @AllArgsConstructor
@@ -20,6 +26,9 @@ public class ScheduleResponse {
         private UUID scheduleId;
     }
 
+    /**
+     * 스케줄 수정 응답 DTO입니다.
+     */
     @Getter
     @Builder
     @AllArgsConstructor
@@ -28,6 +37,9 @@ public class ScheduleResponse {
         private UUID scheduleId;
     }
 
+    /**
+     * 스케줄 목록 조회 시 사용되는 기본 정보 DTO입니다.
+     */
     @Getter
     @Builder
     @AllArgsConstructor
@@ -58,6 +70,9 @@ public class ScheduleResponse {
         private String scheduleStyle;
     }
 
+    /**
+     * 스케줄 상세 정보 조회 응답 DTO입니다.
+     */
     @Getter
     @Builder
     @AllArgsConstructor
@@ -78,8 +93,12 @@ public class ScheduleResponse {
         private BigInteger budget;
         @Schema(description = "스케줄에 포함된 아이템 목록")
         private List<scheduleItemInfo> scheduleItems;
+
     }
 
+    /**
+     * 스케줄에 포함된 개별 아이템의 상세 정보 DTO입니다.
+     */
     @Getter
     @Builder
     @AllArgsConstructor
@@ -102,6 +121,9 @@ public class ScheduleResponse {
         private int cost;
         @Schema(description = "순서", example = "1")
         private int order;
+        @Schema(description = "투어에 있는 테마", example = "테마")
+        private String tema;
+        @Schema(description = "지역명", example = "전주")
+        private String regionName;
     }
-
 }
