@@ -100,6 +100,8 @@ public class ScheduleResponse {
         private String memo;
         @Schema(description = "비용", example = "50000")
         private int cost;
+        @Schema(description = "순서", example = "1")
+        private int order;
     }
 
 }

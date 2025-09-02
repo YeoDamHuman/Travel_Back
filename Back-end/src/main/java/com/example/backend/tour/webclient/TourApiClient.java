@@ -818,4 +818,28 @@ public class TourApiClient {
             return new HashMap<>();
         }
     }
+
+    /**
+     * contentId 리스트로 Tour의 위도, 경도 Map을 조회합니다. (DB 사용)
+     * @param contentIds 조회할 Tour의 contentId 목록
+     * @return Map<contentId, Map<"latitude", "longitude">> 형태의 위치 정보
+     */
+    public Map<String, Map<String, Double>> getTourLocationMapByContentIds(List<String> contentIds) {
+        if (contentIds == null || contentIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        List<Tour> tours = tourRepository.findByContentIdIn(contentIds);
+
+        return tours.stream()
+                .collect(Collectors.toMap(
+                        Tour::getContentId,
+                        tour -> {
+                            Map<String, Double> location = new HashMap<>();
+                            location.put("latitude", tour.getLatitude() != null ? tour.getLatitude() : 0.0);
+                            location.put("longitude", tour.getLongitude() != null ? tour.getLongitude() : 0.0);
+                            return location;
+                        }
+                ));
+    }
 }
