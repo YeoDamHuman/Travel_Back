@@ -1,6 +1,8 @@
 package com.example.backend.tour.webclient;
 
 import com.example.backend.cart.dto.response.CartResponse;
+import com.example.backend.tour.entity.Tour;
+import com.example.backend.tour.repository.TourRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -12,12 +14,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.util.UriComponentsBuilder;
-import lombok.extern.slf4j.Slf4j;
-
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -26,6 +25,7 @@ public class TourApiClient {
 
     private final WebClient webClient;
     private final ObjectMapper objectMapper;
+    private final TourRepository tourRepository;
 
     @Value("${tour.api.key}")
     private String apiKey;
@@ -793,5 +793,29 @@ public class TourApiClient {
             throw new RuntimeException("TourAPI 연결 실패: " + e.getMessage(), e);
         }
     }
-    
+    /**
+     * [최종] contentId 리스트로 Tour의 제목 Map을 조회 (DB 사용)
+     * @param contentIds 조회할 Tour의 contentId 목록
+     * @return Map<contentId, title> 형태의 Tour 제목 정보
+     */
+    public Map<String, String> getTourTitlesMapByContentIds(List<String> contentIds) {
+        try {
+            log.info("=== DB에서 Tour 엔티티 조회 시작 (Map 생성) - contentIds 개수: {} ===", contentIds.size());
+            if (contentIds == null || contentIds.isEmpty()) {
+                log.warn("조회할 contentId가 없습니다.");
+                return new HashMap<>();
+            }
+            List<Tour> tours = tourRepository.findByContentIdIn(contentIds);
+
+            Map<String, String> titleMap = tours.stream()
+                    .collect(Collectors.toMap(Tour::getContentId, Tour::getTitle));
+
+            log.info("DB에서 총 {}개의 엔티티를 Map으로 변환 완료", titleMap.size());
+            return titleMap;
+
+        } catch (Exception e) {
+            log.error("DB에서 Tour 정보 조회 중 오류 발생", e);
+            return new HashMap<>();
+        }
+    }
 }
