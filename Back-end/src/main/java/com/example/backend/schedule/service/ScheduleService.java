@@ -218,10 +218,9 @@ public class ScheduleService {
      * AI로부터 최적화된 경로(JSON 형식)를 받아와 스케줄 아이템들을 업데이트하고 DB에 저장합니다.
      *
      * @param scheduleId 최적화할 스케줄의 ID.
-     * @return 비동기 작업의 완료를 나타내는 {@link Mono<Void>}.
      */
     @Transactional
-    public Mono<Void> optimizeRoute(UUID scheduleId) {
+    public void optimizeRoute(UUID scheduleId) {
         UUID currentUserId = getCurrentUserId();
         scheduleFilter.validateScheduleAccess(scheduleId, currentUserId);
 
@@ -231,53 +230,55 @@ public class ScheduleService {
         List<ScheduleItem> items = scheduleItemRepository.findAllByScheduleId_ScheduleId(scheduleId);
 
         if (items.isEmpty()) {
-            return Mono.error(new IllegalArgumentException("해당 스케줄에 아이템이 없습니다."));
+            throw new IllegalArgumentException("해당 스케줄에 아이템이 없습니다.");
         }
 
-        return aiService.getOptimizedRouteJson(schedule.getScheduleId(), schedule.getStartDate(), schedule.getEndDate(), items)
-                .flatMap(optimizedJson -> {
-                    try {
-                        Map<String, Object> responseMap = objectMapper.readValue(optimizedJson, new TypeReference<>() {});
-                        List<Map<String, Object>> optimizedItems = (List<Map<String, Object>>) responseMap.get("ScheduleItems");
+        // AI 서비스 호출 후 .block()을 사용해 동기적으로 결과를 기다립니다.
+        String optimizedJson = aiService.getOptimizedRouteJson(schedule.getScheduleId(), schedule.getStartDate(), schedule.getEndDate(), items)
+                .block();
 
-                        if (optimizedItems == null) {
-                            return Mono.error(new RuntimeException("AI 응답에 'ScheduleItems' 필드가 없습니다."));
-                        }
+        // Mono의 flatMap 대신, block()으로 얻은 결과를 직접 처리합니다.
+        try {
+            Map<String, Object> responseMap = objectMapper.readValue(optimizedJson, new TypeReference<>() {});
+            List<Map<String, Object>> optimizedItems = (List<Map<String, Object>>) responseMap.get("ScheduleItems");
 
-                        List<ScheduleItem> updatedItems = new ArrayList<>();
+            if (optimizedItems == null) {
+                throw new RuntimeException("AI 응답에 'ScheduleItems' 필드가 없습니다.");
+            }
 
-                        for (Map<String, Object> itemData : optimizedItems) {
-                            String contentId = itemData.get("contentId").toString();
-                            int order = (int) itemData.get("order");
-                            int dayNumber = (int) itemData.get("dayNumber");
-                            String startTimeStr = (String) itemData.get("start_time");
-                            String endTimeStr = (String) itemData.get("end_time");
+            List<ScheduleItem> updatedItems = new ArrayList<>();
 
-                            items.stream()
-                                    .filter(item -> item.getContentId().equals(contentId))
-                                    .findFirst()
-                                    .ifPresent(originalItem -> {
-                                        ScheduleItem newItem = ScheduleItem.builder()
-                                                .scheduleItemId(originalItem.getScheduleItemId())
-                                                .contentId(originalItem.getContentId())
-                                                .memo(originalItem.getMemo())
-                                                .cost(originalItem.getCost())
-                                                .scheduleId(originalItem.getScheduleId())
-                                                .order(order)
-                                                .dayNumber(dayNumber)
-                                                .startTime(LocalTime.parse(startTimeStr))
-                                                .endTime(LocalTime.parse(endTimeStr))
-                                                .build();
+            for (Map<String, Object> itemData : optimizedItems) {
+                String contentId = itemData.get("contentId").toString();
+                int order = (int) itemData.get("order");
+                int dayNumber = (int) itemData.get("dayNumber");
+                String startTimeStr = (String) itemData.get("start_time");
+                String endTimeStr = (String) itemData.get("end_time");
 
-                                        updatedItems.add(newItem);
-                                    });
-                        }
+                items.stream()
+                        .filter(item -> item.getContentId().equals(contentId))
+                        .findFirst()
+                        .ifPresent(originalItem -> {
+                            ScheduleItem newItem = ScheduleItem.builder()
+                                    .scheduleItemId(originalItem.getScheduleItemId())
+                                    .contentId(originalItem.getContentId())
+                                    .memo(originalItem.getMemo())
+                                    .cost(originalItem.getCost())
+                                    .scheduleId(originalItem.getScheduleId())
+                                    .order(order)
+                                    .dayNumber(dayNumber)
+                                    .startTime(LocalTime.parse(startTimeStr))
+                                    .endTime(LocalTime.parse(endTimeStr))
+                                    .build();
 
-                        scheduleItemRepository.saveAll(updatedItems);
-                        return Mono.empty();
-                    } catch (JsonProcessingException e) {
-                        return Mono.error(new RuntimeException("AI 응답 JSON 파싱에 실패했습니다.", e));
-                    }
-                });
+                            updatedItems.add(newItem);
+                        });
+            }
+
+            scheduleItemRepository.saveAll(updatedItems);
+
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("AI 응답 JSON 파싱에 실패했습니다.", e);
+        }
     }
 }
