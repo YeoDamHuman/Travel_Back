@@ -2,6 +2,7 @@ package com.example.backend.board.controller;
 
 import com.example.backend.board.dto.request.BoardRequestDto;
 import com.example.backend.board.dto.request.BoardUpdateRequestDto;
+import com.example.backend.board.dto.response.BoardCreateResponseDto;
 import com.example.backend.board.dto.response.BoardDetailResponseDto;
 import com.example.backend.board.service.BoardService;
 import lombok.RequiredArgsConstructor;
@@ -22,10 +23,10 @@ public class BoardController {
 
     //작성
     @PostMapping
-    public ResponseEntity<?> createBoard(@RequestBody BoardRequestDto requestDto) {
+    public ResponseEntity<BoardCreateResponseDto> createBoard(@RequestBody BoardRequestDto requestDto) {
         UUID userId = AuthUtil.getCurrentUserId();
-        UUID boardId = boardService.createBoard(requestDto, userId);
-        return ResponseEntity.ok().body("boardId: " + boardId);
+        BoardCreateResponseDto response = boardService.createBoard(requestDto, userId);
+        return ResponseEntity.ok(response);
     }
 
     //목록 조회
