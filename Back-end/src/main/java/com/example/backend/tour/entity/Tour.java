@@ -94,7 +94,7 @@ public class Tour {
     @Column(name = "lcls_systm3", length = 50)
     private String lclsSystm3;
 
-    @Column(name = "content_id", length = 100)
+    @Column(name = "content_id", length = 100, unique = true)
     private String contentId;
 
     @Column(name = "content_type_id", length = 100)

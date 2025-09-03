@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -275,24 +276,37 @@ public class CartService {
             throw new IllegalArgumentException("이미 장바구니에 추가된 투어입니다.");
         }
 
-        // TourAPI에서 상세 정보 가져오기
-        CartResponse.TourDetailResponse tourDetail = tourApiClient.getTourDetail(contentId);
+        // 전역적으로 이미 해당 contentId의 Tour가 존재하는지 확인
+        Optional<Tour> existingTour = tourRepository.findByContentId(contentId);
+        
+        Tour tour;
+        if (existingTour.isPresent()) {
+            // 이미 존재하는 Tour를 사용하되, 해당 장바구니에 추가
+            tour = existingTour.get();
+            log.info("기존 Tour 데이터 사용 - contentId: {}, title: {}", contentId, tour.getTitle());
+        } else {
+            // TourAPI에서 상세 정보 가져와서 새로 생성
+            CartResponse.TourDetailResponse tourDetail = tourApiClient.getTourDetail(contentId);
+            
+            tour = Tour.builder()
+                    .contentId(contentId)
+                    .contentTypeId(tourDetail.getContentTypeId())
+                    .title(tourDetail.getTitle())
+                    .address(tourDetail.getAddress())
+                    .longitude(tourDetail.getLongitude())
+                    .latitude(tourDetail.getLatitude())
+                    .image(tourDetail.getImage())
+                    .tel(tourDetail.getTel())
+                    .overview(tourDetail.getOverview())
+                    .tema(tourDetail.getTheme())
+                    .cartId(cart)
+                    .build();
+            
+            tour = tourRepository.save(tour);
+            log.info("새 Tour 데이터 생성 - contentId: {}, title: {}", contentId, tour.getTitle());
+        }
 
-        Tour tour = Tour.builder()
-                .contentId(contentId)
-                .contentTypeId(tourDetail.getContentTypeId())
-                .title(tourDetail.getTitle())
-                .address(tourDetail.getAddress())
-                .longitude(tourDetail.getLongitude())
-                .latitude(tourDetail.getLatitude())
-                .image(tourDetail.getImage())
-                .tel(tourDetail.getTel())
-                .overview(tourDetail.getOverview())
-                .tema(tourDetail.getTheme())
-                .cartId(cart)
-                .build();
-
-        Tour savedTour = tourRepository.save(tour);
+        Tour savedTour = tour;
 
         if (cart.getLDongRegnCd() == null || cart.getLDongRegnCd().isEmpty()) {
             cart = Cart.builder()
@@ -519,23 +533,37 @@ public class CartService {
             throw new IllegalArgumentException("이미 장바구니에 추가된 투어입니다.");
         }
 
-        CartResponse.TourDetailResponse tourDetail = tourApiClient.getTourDetail(contentId);
+        // 전역적으로 이미 해당 contentId의 Tour가 존재하는지 확인
+        Optional<Tour> existingTour = tourRepository.findByContentId(contentId);
+        
+        Tour tour;
+        if (existingTour.isPresent()) {
+            // 이미 존재하는 Tour를 사용하되, 해당 장바구니에 추가
+            tour = existingTour.get();
+            log.info("기존 Tour 데이터 사용 - contentId: {}, title: {}", contentId, tour.getTitle());
+        } else {
+            // TourAPI에서 상세 정보 가져와서 새로 생성
+            CartResponse.TourDetailResponse tourDetail = tourApiClient.getTourDetail(contentId);
+            
+            tour = Tour.builder()
+                    .contentId(contentId)
+                    .contentTypeId(tourDetail.getContentTypeId())
+                    .title(tourDetail.getTitle())
+                    .address(tourDetail.getAddress())
+                    .longitude(tourDetail.getLongitude())
+                    .latitude(tourDetail.getLatitude())
+                    .image(tourDetail.getImage())
+                    .tel(tourDetail.getTel())
+                    .overview(tourDetail.getOverview())
+                    .tema(tourDetail.getTheme())
+                    .cartId(cart)
+                    .build();
+            
+            tour = tourRepository.save(tour);
+            log.info("새 Tour 데이터 생성 - contentId: {}, title: {}", contentId, tour.getTitle());
+        }
 
-        Tour tour = Tour.builder()
-                .contentId(contentId)
-                .contentTypeId(tourDetail.getContentTypeId())
-                .title(tourDetail.getTitle())
-                .address(tourDetail.getAddress())
-                .longitude(tourDetail.getLongitude())
-                .latitude(tourDetail.getLatitude())
-                .image(tourDetail.getImage())
-                .tel(tourDetail.getTel())
-                .overview(tourDetail.getOverview())
-                .tema(tourDetail.getTheme())
-                .cartId(cart)
-                .build();
-
-        Tour savedTour = tourRepository.save(tour);
+        Tour savedTour = tour;
 
         return CartResponse.AddTourResponse.builder()
                 .tourId(savedTour.getTourId())
