@@ -10,6 +10,8 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import jakarta.persistence.LockModeType;
+
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -61,4 +63,12 @@ public interface RegionRepository extends JpaRepository<Region, Long> {
     @Query("UPDATE Region r SET r.viewCount = r.viewCount + 1, r.lastViewedAt = CURRENT_TIMESTAMP WHERE r.lDongRegnCd = :lDongRegnCd AND r.lDongSignguCd = :lDongSignguCd")
     int incrementViewCountByLDong(@Param("lDongRegnCd") String lDongRegnCd, @Param("lDongSignguCd") String lDongSignguCd);
 
+
+    /**
+     * "lDongRegnCd_lDongSignguCd" 형태로 조합된 여러 코드 키에 해당하는 모든 지역 정보를 조회합니다.
+     * @param concatenatedCodes 조회할 조합 코드 목록
+     * @return Region 리스트
+     */
+    @Query("SELECT r FROM Region r WHERE CONCAT(r.lDongRegnCd, '_', r.lDongSignguCd) IN :codes")
+    List<Region> findByConcatenatedCodesIn(@Param("codes") Collection<String> concatenatedCodes);
 }
