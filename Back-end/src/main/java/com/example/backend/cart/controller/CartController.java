@@ -19,6 +19,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -51,14 +52,17 @@ public class CartController {
     }
 
 
-    @DeleteMapping("/cart/tours/{tourId}")
+    @DeleteMapping("/carts/{cartId}/tours/{tourId}")
     @Operation(summary = "장바구니에서 투어 삭제",
-            description = "장바구니에서 특정 투어 삭제",
+            description = "특정 장바구니에서 특정 투어 삭제",
             security = @SecurityRequirement(name = "JWT"))
     public ResponseEntity<Void> removeTourFromCart(
             @AuthenticationPrincipal UserDetails userDetails,
+            @Parameter(description = "장바구니 ID")
+            @PathVariable UUID cartId,
+            @Parameter(description = "투어 ID")
             @PathVariable UUID tourId) {
-        cartService.removeTourFromCart(userDetails.getUsername(), tourId);
+        cartService.removeTourFromCart(userDetails.getUsername(), cartId, tourId);
         return ResponseEntity.noContent().build();
     }
 
@@ -206,5 +210,77 @@ public class CartController {
         }
         
         return request.getRemoteAddr();
+    }
+
+    @PostMapping("/carts")
+    @Operation(summary = "새 장바구니 생성", description = "사용자의 새 장바구니 생성",
+            security = @SecurityRequirement(name = "JWT"))
+    public ResponseEntity<CartResponse.CartDetailResponse> createCart(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @Parameter(description = "법정동 시/도 코드", example = "11")
+            @RequestParam(value = "lDongRegnCd", defaultValue = "11") String lDongRegnCd,
+            @Parameter(description = "법정동 시 코드", example = "110")
+            @RequestParam(value = "lDongSignguCd", defaultValue = "110") String lDongSignguCd) {
+        CartResponse.CartDetailResponse response = cartService.createCart(userDetails.getUsername(), lDongRegnCd, lDongSignguCd);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/carts")
+    @Operation(summary = "사용자의 모든 장바구니 조회", description = "사용자의 모든 장바구니 목록 조회",
+            security = @SecurityRequirement(name = "JWT"))
+    public ResponseEntity<List<CartResponse.CartDetailResponse>> getUserCarts(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        List<CartResponse.CartDetailResponse> response = cartService.getUserCarts(userDetails.getUsername());
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/carts/{cartId}")
+    @Operation(summary = "특정 장바구니 조회", description = "cartId로 특정 장바구니 조회",
+            security = @SecurityRequirement(name = "JWT"))
+    public ResponseEntity<CartResponse.CartDetailResponse> getCartById(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @Parameter(description = "장바구니 ID")
+            @PathVariable UUID cartId) {
+        CartResponse.CartDetailResponse response = cartService.getCartById(userDetails.getUsername(), cartId);
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/carts/{cartId}")
+    @Operation(summary = "장바구니 삭제", description = "특정 장바구니와 그 안의 모든 투어 삭제",
+            security = @SecurityRequirement(name = "JWT"))
+    public ResponseEntity<Void> deleteCart(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @Parameter(description = "장바구니 ID")
+            @PathVariable UUID cartId) {
+        cartService.deleteCart(userDetails.getUsername(), cartId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/carts/{cartId}/tours")
+    @Operation(summary = "특정 장바구니에 투어 추가", description = "지정된 장바구니에 새로운 투어 추가",
+            security = @SecurityRequirement(name = "JWT"))
+    public ResponseEntity<CartResponse.AddTourResponse> addTourToSpecificCart(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @Parameter(description = "장바구니 ID")
+            @PathVariable UUID cartId,
+            @RequestBody CartResponse.TourSearchResponse tourResponse) {
+        CartResponse.AddTourResponse response = cartService.addTourToSpecificCart(userDetails.getUsername(), cartId, tourResponse);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/carts/{cartId}/tours/simple")
+    @Operation(summary = "특정 장바구니에 투어 추가 (contentId만)", 
+               description = "지정된 장바구니에 contentId로 투어 추가",
+               security = @SecurityRequirement(name = "JWT"))
+    public ResponseEntity<CartResponse.AddTourResponse> addTourToSpecificCartByContentId(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @Parameter(description = "장바구니 ID")
+            @PathVariable UUID cartId,
+            @Parameter(description = "추가할 투어의 contentId", example = "126508")
+            @RequestParam("contentId") String contentId) {
+        
+        CartResponse.AddTourResponse response = cartService.addTourToSpecificCartByContentId(
+                userDetails.getUsername(), cartId, contentId);
+        return ResponseEntity.ok(response);
     }
 }

@@ -109,7 +109,7 @@ public class ScheduleController {
      * @param scheduleId 조회할 스케줄의 ID.
      * @return 상세 스케줄 정보가 담긴 {@link ScheduleResponse.scheduleDetailResponse} 객체를 담은 {@link ResponseEntity}.
      */
-    @GetMapping("/{scheduleId}")
+    @GetMapping("details/{scheduleId}")
     @Operation(summary = "스케쥴 상세 조회", description = "스케쥴 상세 정보를 조회하는 API.")
     public ResponseEntity<ScheduleResponse.scheduleDetailResponse> getSchedule(
             @Parameter(description = "스케쥴 ID", example = "b4e8f9a0-1234-4c56-8d7e-9f12345b6789")

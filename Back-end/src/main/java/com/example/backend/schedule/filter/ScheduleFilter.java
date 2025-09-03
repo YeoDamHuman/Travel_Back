@@ -111,11 +111,7 @@ public class ScheduleFilter {
         return group;
     }
 
-    public Cart validateCartExistence(UUID userId) {
-        UUID cartId = cartService.getCart(userId.toString()).getCartId();
-        if (cartId == null) {
-            throw new IllegalArgumentException("장바구니 ID(cartId)는 필수입니다.");
-        }
+    public Cart validateCartExistence(UUID cartId) {
         return cartService.findCartById(cartId);
     }
 }

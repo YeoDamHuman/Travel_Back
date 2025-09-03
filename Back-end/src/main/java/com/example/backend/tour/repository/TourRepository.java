@@ -22,4 +22,6 @@ public interface TourRepository extends JpaRepository<Tour, UUID> {
     void deleteAllByCartId(Cart cart);
 
     int countByCartId(Cart cart);
+
+    List<Tour> findByContentIdIn(List<String> contentIds);
 }

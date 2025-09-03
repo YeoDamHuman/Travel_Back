@@ -14,7 +14,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -220,4 +222,57 @@ public class RegionService {
         regionInitService.refreshRegions();
     }
 
+
+
+    /**
+     * 여러 법정동 코드 쌍에 대한 지역명 맵을 일괄 조회합니다. (N+1 문제 해결)
+     * @param codePairs 조회할 lDongRegnCd와 lDongSignguCd 코드 쌍 리스트
+     * @return Key: "lDongRegnCd_lDongSignguCd", Value: "지역명" 형태의 Map
+     */
+    @Transactional(readOnly = true)
+    public Map<String, String> getRegionNamesByCodePairs(List<CodePair> codePairs) {
+        if (codePairs == null || codePairs.isEmpty()) {
+            log.warn("getRegionNamesByCodePairs: 입력된 codePairs가 없습니다.");
+            return Collections.emptyMap();
+        }
+
+        // 💡 1. 서비스에 전달된 입력 값 확인
+        log.info("▶️ 1. RegionService 입력값 (codePairs 개수): {}", codePairs.size());
+        log.debug("   - codePairs 내용: {}", codePairs);
+
+        // 2. Repository에 전달할 조합 키("1_110" 형태) 목록을 만듭니다.
+        List<String> concatenatedCodes = codePairs.stream()
+                .map(pair -> pair.lDongRegnCd() + "_" + pair.lDongSignguCd())
+                .collect(Collectors.toList());
+        log.info("▶️ 2. DB 조회용 키 (concatenatedCodes 개수): {}", concatenatedCodes.size());
+        log.debug("   - concatenatedCodes 내용: {}", concatenatedCodes);
+
+        // 3. Repository의 @Query 메서드를 호출하여 한 번에 모든 Region 정보를 가져옵니다.
+        List<Region> foundRegions = regionRepository.findByConcatenatedCodesIn(concatenatedCodes);
+        log.info("▶️ 3. DB 조회 결과 (foundRegions 개수): {}", foundRegions.size());
+
+        // 조회된 내용이 있다면 첫 번째 결과 샘플을 로그로 남깁니다.
+        if (!foundRegions.isEmpty()) {
+            log.debug("   - 첫 번째 조회 결과: RegionName={}, lDongRegnCd={}, lDongSignguCd={}",
+                    foundRegions.get(0).getRegionName(),
+                    foundRegions.get(0).getLDongRegnCd(),
+                    foundRegions.get(0).getLDongSignguCd());
+        }
+
+        // 4. 결과를 사용하기 쉬운 Map 형태로 변환하여 반환합니다.
+        Map<String, String> regionNameMap = foundRegions.stream()
+                .collect(Collectors.toMap(
+                        region -> region.getLDongRegnCd() + "_" + region.getLDongSignguCd(),
+                        Region::getRegionName,
+                        (existing, replacement) -> existing
+                ));
+        log.info("▶️ 4. 최종 반환 Map (regionNameMap 개수): {}", regionNameMap.size());
+        log.debug("   - regionNameMap 내용: {}", regionNameMap);
+
+        return regionNameMap;
+    }
+    /**
+     *  ScheduleService에서 코드 쌍을 전달하기 위해 사용할 public record
+     */
+    public record CodePair(String lDongRegnCd, String lDongSignguCd) {}
 }

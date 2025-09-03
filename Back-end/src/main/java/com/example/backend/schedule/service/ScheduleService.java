@@ -2,6 +2,7 @@ package com.example.backend.schedule.service;
 
 import com.example.backend.cart.entity.Cart;
 import com.example.backend.common.auth.AuthUtil;
+import com.example.backend.region.service.RegionService;
 import com.example.backend.schedule.dto.request.ScheduleRequest.ScheduleCreateRequest;
 import com.example.backend.schedule.dto.request.ScheduleRequest.ScheduleUpdateRequest;
 import com.example.backend.schedule.dto.response.ScheduleResponse.scheduleDetailResponse;
@@ -15,6 +16,7 @@ import com.example.backend.schedule.entity.ScheduleType;
 import com.example.backend.schedule.repository.ScheduleRepository;
 import com.example.backend.scheduleItem.entity.ScheduleItem;
 import com.example.backend.scheduleItem.repository.ScheduleItemRepository;
+import com.example.backend.tour.webclient.TourApiClient;
 import com.example.backend.user.entity.User;
 import com.example.backend.user.repository.UserRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -24,7 +26,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import reactor.core.publisher.Mono;
 import java.time.LocalTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -47,7 +48,8 @@ public class ScheduleService {
     private final ScheduleItemService scheduleItemService;
     private final AiService aiService;
     private final ObjectMapper objectMapper;
-
+    private final TourApiClient tourApiClient;
+    private final RegionService regionService;
     /**
      * 새로운 스케줄을 생성하고 스케줄 아이템들을 저장합니다.
      *
@@ -58,11 +60,11 @@ public class ScheduleService {
     public UUID createSchedule(ScheduleCreateRequest request) {
         User user = AuthUtil.getCurrentUser(userRepository);
         Group group = scheduleFilter.validateScheduleRequest(request.getScheduleType(), request.getGroupId());
-        Cart cart = scheduleFilter.validateCartExistence(user.getUserId());
+        Cart cart = scheduleFilter.validateCartExistence(request.getCartId());
         Schedule savedSchedule = scheduleRepository.save(ScheduleCreateRequest.toEntity(request, group, user, cart));
         List<ScheduleItem> scheduleItems = request.getScheduleItem().stream()
                 .map(itemDto -> ScheduleItem.builder()
-                        .contentId(UUID.fromString(itemDto.getContentId()))
+                        .contentId(itemDto.getContentId())
                         .cost(itemDto.getCost())
                         .scheduleId(savedSchedule)
                         .build())
@@ -165,7 +167,7 @@ public class ScheduleService {
      * @param scheduleId 상세 정보를 조회할 스케줄의 ID.
      * @return 스케줄의 상세 정보와 포함된 스케줄 아이템 목록이 담긴 {@link scheduleDetailResponse} 객체.
      */
-    @Transactional
+    @Transactional(readOnly = true)
     public scheduleDetailResponse getScheduleDetail(UUID scheduleId) {
         UUID currentUserId = getCurrentUserId();
         scheduleFilter.validateScheduleAccess(scheduleId, currentUserId);
@@ -175,16 +177,57 @@ public class ScheduleService {
 
         List<ScheduleItem> scheduleItems = scheduleItemRepository.findAllByScheduleId_ScheduleId(scheduleId);
 
+        List<String> contentIds = scheduleItems.stream()
+                .map(ScheduleItem::getContentId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+
+        // 💡 1. Tour 정보 일괄 조회 (제목, 테마, 지역 코드 등)
+        Map<String, String> tourTitlesMap = tourApiClient.getTourTitlesMapByContentIds(contentIds);
+        Map<String, Map<String, String>> tourExtraInfoMap = tourApiClient.getTourExtraInfoMapByContentIds(contentIds);
+
+        // 💡 2. 지역명 조회를 위한 코드 쌍(CodePair) 리스트 준비
+        List<RegionService.CodePair> codePairsToSearch = tourExtraInfoMap.values().stream()
+                .map(info -> new RegionService.CodePair(
+                        info.get("lDongRegnCd"),
+                        info.get("lDongSignguCd")
+                ))
+                .filter(pair -> pair.lDongRegnCd() != null && !pair.lDongRegnCd().isEmpty())
+                .distinct()
+                .collect(Collectors.toList());
+
+        // 💡 3. Region 정보 일괄 조회 (지역명)
+        Map<String, String> regionNameMap = regionService.getRegionNamesByCodePairs(codePairsToSearch);
+
         List<scheduleItemInfo> itemsDto = scheduleItems.stream()
-                .map(item -> scheduleItemInfo.builder()
-                        .scheduleItemId(item.getScheduleItemId())
-                        .placeId(item.getContentId())
-                        .dayNumber(item.getDayNumber())
-                        .startTime(item.getStartTime())
-                        .endTime(item.getEndTime())
-                        .memo(item.getMemo())
-                        .cost(item.getCost())
-                        .build())
+                .map(item -> {
+                    String contentId = item.getContentId();
+                    String title = tourTitlesMap.getOrDefault(contentId, "장소 이름 없음");
+
+                    Map<String, String> extraInfo = tourExtraInfoMap.getOrDefault(contentId, Collections.emptyMap());
+                    String tema = extraInfo.getOrDefault("tema", "");
+                    String lDongRegnCd = extraInfo.getOrDefault("lDongRegnCd", "");
+                    String lDongSignguCd = extraInfo.getOrDefault("lDongSignguCd", "");
+
+                    // 💡 4. 조회해온 지역명 맵에서 최종 지역명 찾기
+                    String regionKey = lDongRegnCd + "_" + lDongSignguCd;
+                    String region = regionNameMap.getOrDefault(regionKey, "");
+
+                    return scheduleItemInfo.builder()
+                            .scheduleItemId(item.getScheduleItemId())
+                            .contentId(contentId)
+                            .title(title)
+                            .dayNumber(item.getDayNumber())
+                            .startTime(item.getStartTime())
+                            .endTime(item.getEndTime())
+                            .memo(item.getMemo())
+                            .cost(item.getCost())
+                            .order(item.getOrder())
+                            .tema(tema)
+                            .regionName(region)
+                            .build();
+                })
                 .collect(Collectors.toList());
 
         return scheduleDetailResponse.builder()
@@ -201,14 +244,12 @@ public class ScheduleService {
 
     /**
      * AI 서비스를 활용하여 스케줄의 경로를 최적화합니다.
-     * <p>
      * AI로부터 최적화된 경로(JSON 형식)를 받아와 스케줄 아이템들을 업데이트하고 DB에 저장합니다.
      *
      * @param scheduleId 최적화할 스케줄의 ID.
-     * @return 비동기 작업의 완료를 나타내는 {@link Mono<Void>}.
      */
     @Transactional
-    public Mono<Void> optimizeRoute(UUID scheduleId) {
+    public void optimizeRoute(UUID scheduleId) {
         UUID currentUserId = getCurrentUserId();
         scheduleFilter.validateScheduleAccess(scheduleId, currentUserId);
 
@@ -218,53 +259,69 @@ public class ScheduleService {
         List<ScheduleItem> items = scheduleItemRepository.findAllByScheduleId_ScheduleId(scheduleId);
 
         if (items.isEmpty()) {
-            return Mono.error(new IllegalArgumentException("해당 스케줄에 아이템이 없습니다."));
+            throw new IllegalArgumentException("해당 스케줄에 아이템이 없습니다.");
         }
 
-        return aiService.getOptimizedRouteJson(schedule.getScheduleId(), schedule.getStartDate(), schedule.getEndDate(), items)
-                .flatMap(optimizedJson -> {
-                    try {
-                        Map<String, Object> responseMap = objectMapper.readValue(optimizedJson, new TypeReference<>() {});
-                        List<Map<String, Object>> optimizedItems = (List<Map<String, Object>>) responseMap.get("ScheduleItems");
+        List<String> contentIds = items.stream()
+                .map(ScheduleItem::getContentId)
+                .distinct()
+                .collect(Collectors.toList());
 
-                        if (optimizedItems == null) {
-                            return Mono.error(new RuntimeException("AI 응답에 'ScheduleItems' 필드가 없습니다."));
-                        }
+        Map<String, Map<String, Double>> locationMap = tourApiClient.getTourLocationMapByContentIds(contentIds);
 
-                        List<ScheduleItem> updatedItems = new ArrayList<>();
+        List<AiService.ItemWithLocationInfo> itemsWithLocation = items.stream()
+                .map(item -> {
+                    Map<String, Double> loc = locationMap.getOrDefault(item.getContentId(), Collections.emptyMap());
+                    double latitude = loc.getOrDefault("latitude", 0.0);
+                    double longitude = loc.getOrDefault("longitude", 0.0);
+                    return new AiService.ItemWithLocationInfo(item.getContentId(), latitude, longitude);
+                })
+                .collect(Collectors.toList());
 
-                        for (Map<String, Object> itemData : optimizedItems) {
-                            UUID contentId = UUID.fromString((String) itemData.get("contentId"));
-                            int order = (int) itemData.get("order");
-                            int dayNumber = (int) itemData.get("dayNumber");
-                            String startTimeStr = (String) itemData.get("start_time");
-                            String endTimeStr = (String) itemData.get("end_time");
+        String optimizedJson = aiService.getOptimizedRouteJson(schedule.getScheduleId(), schedule.getStartDate(), schedule.getEndDate(), itemsWithLocation)
+                .block();
 
-                            items.stream()
-                                    .filter(item -> item.getContentId().equals(contentId))
-                                    .findFirst()
-                                    .ifPresent(originalItem -> {
-                                        ScheduleItem newItem = ScheduleItem.builder()
-                                                .scheduleItemId(originalItem.getScheduleItemId())
-                                                .contentId(originalItem.getContentId())
-                                                .memo(originalItem.getMemo())
-                                                .cost(originalItem.getCost())
-                                                .scheduleId(originalItem.getScheduleId())
-                                                .order(order)
-                                                .dayNumber(dayNumber)
-                                                .startTime(LocalTime.parse(startTimeStr))
-                                                .endTime(LocalTime.parse(endTimeStr))
-                                                .build();
+        try {
+            Map<String, Object> responseMap = objectMapper.readValue(optimizedJson, new TypeReference<>() {});
+            List<Map<String, Object>> optimizedItems = (List<Map<String, Object>>) responseMap.get("ScheduleItems");
 
-                                        updatedItems.add(newItem);
-                                    });
-                        }
+            if (optimizedItems == null) {
+                throw new RuntimeException("AI 응답에 'ScheduleItems' 필드가 없습니다.");
+            }
 
-                        scheduleItemRepository.saveAll(updatedItems);
-                        return Mono.empty();
-                    } catch (JsonProcessingException e) {
-                        return Mono.error(new RuntimeException("AI 응답 JSON 파싱에 실패했습니다.", e));
-                    }
-                });
+            List<ScheduleItem> updatedItems = new ArrayList<>();
+
+            for (Map<String, Object> itemData : optimizedItems) {
+                String contentId = itemData.get("contentId").toString();
+                int order = (int) itemData.get("order");
+                int dayNumber = (int) itemData.get("dayNumber");
+                String startTimeStr = (String) itemData.get("start_time");
+                String endTimeStr = (String) itemData.get("end_time");
+
+                items.stream()
+                        .filter(item -> item.getContentId().equals(contentId))
+                        .findFirst()
+                        .ifPresent(originalItem -> {
+                            ScheduleItem newItem = ScheduleItem.builder()
+                                    .scheduleItemId(originalItem.getScheduleItemId())
+                                    .contentId(originalItem.getContentId())
+                                    .memo(originalItem.getMemo())
+                                    .cost(originalItem.getCost())
+                                    .scheduleId(originalItem.getScheduleId())
+                                    .order(order)
+                                    .dayNumber(dayNumber)
+                                    .startTime(LocalTime.parse(startTimeStr))
+                                    .endTime(LocalTime.parse(endTimeStr))
+                                    .build();
+
+                            updatedItems.add(newItem);
+                        });
+            }
+
+            scheduleItemRepository.saveAll(updatedItems);
+
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("AI 응답 JSON 파싱에 실패했습니다.", e);
+        }
     }
 }

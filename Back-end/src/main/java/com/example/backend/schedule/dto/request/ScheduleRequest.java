@@ -11,6 +11,7 @@ import lombok.Builder;
 import lombok.Getter;
 import java.math.BigInteger;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -37,7 +38,9 @@ public class ScheduleRequest {
         @Schema(description = "출발 장소", example = "서울역")
         private String startPlace;
         @Schema(description = "출발 시간", example = "09:00")
-        private String startTime;
+        private LocalTime startTime;
+        @Schema(description = "카트 ID", example = "a3f12c9b-4567-4d89-9a12-c3b4d6a7f123")
+        private UUID cartId;
         @Schema(description = "일정 아이템 목록")
         private List<Items> scheduleItem;
 
@@ -55,6 +58,8 @@ public class ScheduleRequest {
                     .userId(user)
                     .scheduleType(request.scheduleType)
                     .cartId(cart)
+                    .startTime(request.startTime)
+                    .startPlace(request.startPlace)
                     .build();
         }
 
@@ -62,7 +67,7 @@ public class ScheduleRequest {
         @Builder
         @AllArgsConstructor
         public static class Items {
-            @Schema(description = "콘텐츠 ID", example = "abcd1234")
+            @Schema(description = "콘텐츠 ID", example = "126508")
             private String contentId;
             @Schema(description = "비용", example = "12000")
             private int cost;
