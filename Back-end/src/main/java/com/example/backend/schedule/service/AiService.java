@@ -29,7 +29,7 @@ public class AiService {
     private String openAiApiKey;
 
     // 💡 1. ScheduleService에서 사용할 수 있도록 public record로 DTO를 정의합니다.
-    public record ItemWithLocationInfo(String contentId, double latitude, double longitude) {}
+    public record ItemWithLocationInfo(String contentId, String title, double latitude, double longitude) {}
 
     // 💡 2. 메서드의 파라미터를 `List<ScheduleItem>`에서 `List<ItemWithLocationInfo>`로 변경합니다.
     public Mono<String> getOptimizedRouteJson(UUID scheduleId, LocalDate startDate, LocalDate endDate, List<ItemWithLocationInfo> itemsWithLocation) {

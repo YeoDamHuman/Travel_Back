@@ -50,6 +50,7 @@ public class ScheduleService {
     private final ObjectMapper objectMapper;
     private final TourApiClient tourApiClient;
     private final RegionService regionService;
+
     /**
      * 새로운 스케줄을 생성하고 스케줄 아이템들을 저장합니다.
      *
@@ -183,11 +184,9 @@ public class ScheduleService {
                 .distinct()
                 .collect(Collectors.toList());
 
-        // 💡 1. Tour 정보 일괄 조회 (제목, 테마, 지역 코드 등)
         Map<String, String> tourTitlesMap = tourApiClient.getTourTitlesMapByContentIds(contentIds);
         Map<String, Map<String, String>> tourExtraInfoMap = tourApiClient.getTourExtraInfoMapByContentIds(contentIds);
 
-        // 💡 2. 지역명 조회를 위한 코드 쌍(CodePair) 리스트 준비
         List<RegionService.CodePair> codePairsToSearch = tourExtraInfoMap.values().stream()
                 .map(info -> new RegionService.CodePair(
                         info.get("lDongRegnCd"),
@@ -197,7 +196,6 @@ public class ScheduleService {
                 .distinct()
                 .collect(Collectors.toList());
 
-        // 💡 3. Region 정보 일괄 조회 (지역명)
         Map<String, String> regionNameMap = regionService.getRegionNamesByCodePairs(codePairsToSearch);
 
         List<scheduleItemInfo> itemsDto = scheduleItems.stream()
@@ -210,7 +208,6 @@ public class ScheduleService {
                     String lDongRegnCd = extraInfo.getOrDefault("lDongRegnCd", "");
                     String lDongSignguCd = extraInfo.getOrDefault("lDongSignguCd", "");
 
-                    // 💡 4. 조회해온 지역명 맵에서 최종 지역명 찾기
                     String regionKey = lDongRegnCd + "_" + lDongSignguCd;
                     String region = regionNameMap.getOrDefault(regionKey, "");
 
@@ -267,21 +264,28 @@ public class ScheduleService {
                 .distinct()
                 .collect(Collectors.toList());
 
+        // 위치 정보와 제목 정보를 Tour API 클라이언트를 통해 가져옵니다.
         Map<String, Map<String, Double>> locationMap = tourApiClient.getTourLocationMapByContentIds(contentIds);
+        Map<String, String> tourTitlesMap = tourApiClient.getTourTitlesMapByContentIds(contentIds);
 
+        // AiService에 전달할 DTO 리스트를 생성합니다. (title 포함)
         List<AiService.ItemWithLocationInfo> itemsWithLocation = items.stream()
                 .map(item -> {
-                    Map<String, Double> loc = locationMap.getOrDefault(item.getContentId(), Collections.emptyMap());
+                    String contentId = item.getContentId();
+                    Map<String, Double> loc = locationMap.getOrDefault(contentId, Collections.emptyMap());
+                    String title = tourTitlesMap.getOrDefault(contentId, "정보 없음");
                     double latitude = loc.getOrDefault("latitude", 0.0);
                     double longitude = loc.getOrDefault("longitude", 0.0);
-                    return new AiService.ItemWithLocationInfo(item.getContentId(), latitude, longitude);
+                    return new AiService.ItemWithLocationInfo(contentId, title, latitude, longitude);
                 })
                 .collect(Collectors.toList());
 
+        // AiService를 호출하여 최적화된 경로 JSON을 받습니다.
         String optimizedJson = aiService.getOptimizedRouteJson(schedule.getScheduleId(), schedule.getStartDate(), schedule.getEndDate(), itemsWithLocation)
                 .block();
 
         try {
+            // AI 응답을 파싱하여 스케줄 아이템을 업데이트합니다.
             Map<String, Object> responseMap = objectMapper.readValue(optimizedJson, new TypeReference<>() {});
             List<Map<String, Object>> optimizedItems = (List<Map<String, Object>>) responseMap.get("ScheduleItems");
 
@@ -321,6 +325,7 @@ public class ScheduleService {
             scheduleItemRepository.saveAll(updatedItems);
 
         } catch (JsonProcessingException e) {
+            log.error("AI 응답 JSON 파싱 실패", e);
             throw new RuntimeException("AI 응답 JSON 파싱에 실패했습니다.", e);
         }
     }
