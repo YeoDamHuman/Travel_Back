@@ -217,8 +217,6 @@ public class ScheduleService {
                             .contentId(contentId)
                             .title(title)
                             .dayNumber(item.getDayNumber())
-                            .startTime(item.getStartTime())
-                            .endTime(item.getEndTime())
                             .memo(item.getMemo())
                             .cost(item.getCost())
                             .order(item.getOrder())
@@ -315,8 +313,6 @@ public class ScheduleService {
                                     .scheduleId(originalItem.getScheduleId())
                                     .order(order)
                                     .dayNumber(dayNumber)
-                                    .startTime(LocalTime.parse(startTimeStr))
-                                    .endTime(LocalTime.parse(endTimeStr))
                                     .build();
 
                             updatedItems.add(newItem);

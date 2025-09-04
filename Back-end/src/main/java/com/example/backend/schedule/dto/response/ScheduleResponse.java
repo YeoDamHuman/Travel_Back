@@ -113,10 +113,6 @@ public class ScheduleResponse {
         private String title;
         @Schema(description = "일차 번호", example = "1")
         private Integer dayNumber;
-        @Schema(description = "시작 시간", example = "10:00:00")
-        private LocalTime startTime;
-        @Schema(description = "종료 시간", example = "12:00:00")
-        private LocalTime endTime;
         @Schema(description = "메모", example = "점심 식사")
         private String memo;
         @Schema(description = "비용", example = "50000")
