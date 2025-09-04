@@ -58,6 +58,9 @@ public class BoardService {
 
         Board saved = boardRepository.save(board);
 
+        schedule.setIsBoarded(true);
+        scheduleRepository.save(schedule);
+
         return BoardCreateResponseDto.builder()
                 .boardId(saved.getBoardId())
                 .scheduleId(saved.getSchedule().getScheduleId())
@@ -83,6 +86,7 @@ public class BoardService {
                     .count(board.getCount())
                     .tag(board.getTag())
                     .imageUrls(thumbs)
+                    .scheduleId(board.getSchedule().getScheduleId())
                     .build();
         }).toList();
     }
@@ -125,6 +129,7 @@ public class BoardService {
                 .tag(board.getTag())
                 .comments(comments)
                 .hasNextComment(commentPage.hasNext())
+                .scheduleId(board.getSchedule().getScheduleId())
                 .build();
     }
 

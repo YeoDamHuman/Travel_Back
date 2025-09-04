@@ -22,6 +22,6 @@ public class BoardDetailResponseDto {
     private List<CommentResponseDto> comments;
     private List<String> imageUrls;
     private boolean hasNextComment;
-
+    private UUID scheduleId;
 }
 

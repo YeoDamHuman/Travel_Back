@@ -17,7 +17,7 @@ public class BoardListResponseDto {
     private LocalDateTime createdAt;
     private int count;
     private String tag;
-
+    private UUID scheduleId;
     private List<String> imageUrls;
 }
 
