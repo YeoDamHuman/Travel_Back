@@ -2,6 +2,7 @@ package com.example.backend.board.service;
 
 import com.example.backend.board.dto.request.BoardRequestDto;
 import com.example.backend.board.dto.request.BoardUpdateRequestDto;
+import com.example.backend.board.dto.response.BoardCreateResponseDto;
 import com.example.backend.board.dto.response.BoardDetailResponseDto;
 import com.example.backend.board.entity.Board;
 import com.example.backend.board.entity.BoardImage;
@@ -9,6 +10,8 @@ import com.example.backend.comment.dto.response.CommentResponseDto;
 import com.example.backend.comment.entity.Comment;
 import com.example.backend.comment.repository.CommentRepository;
 import com.example.backend.board.repository.BoardRepository;
+import com.example.backend.schedule.entity.Schedule;
+import com.example.backend.schedule.repository.ScheduleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -30,17 +33,21 @@ public class BoardService {
     private final CommentRepository commentRepository;
     private final BoardRepository boardRepository;
     private final UserRepository userRepository;
+    private final ScheduleRepository scheduleRepository;
 
-
-    public UUID createBoard(BoardRequestDto requestDto, UUID userId) {
+    public BoardCreateResponseDto createBoard(BoardRequestDto requestDto, UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("유저를 찾을 수 없습니다."));
+
+        Schedule schedule = scheduleRepository.findById(requestDto.getScheduleId())
+                .orElseThrow(() -> new IllegalArgumentException("스케줄을 찾을 수 없습니다."));
 
         Board board = Board.builder()
                 .title(requestDto.getTitle())
                 .content(requestDto.getContent())
                 .tag(requestDto.getTag())
                 .userId(user)
+                .schedule(schedule)
                 .build();
 
         if (requestDto.getImageUrls() != null) {
@@ -50,7 +57,11 @@ public class BoardService {
         }
 
         Board saved = boardRepository.save(board);
-        return saved.getBoardId();
+
+        return BoardCreateResponseDto.builder()
+                .boardId(saved.getBoardId())
+                .scheduleId(saved.getSchedule().getScheduleId())
+                .build();
     }
 
     public List<BoardListResponseDto> getBoardList(int page, int size) {

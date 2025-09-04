@@ -1,6 +1,7 @@
 package com.example.backend.board.entity;
 
 
+import com.example.backend.schedule.entity.Schedule;
 import com.example.backend.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
@@ -47,6 +48,9 @@ public class Board {
     @Column(name = "tag", length = 200)
     private String tag;
 
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "schedule_id", referencedColumnName = "schedule_id")
+    private Schedule schedule;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
@@ -56,6 +60,10 @@ public class Board {
     @OrderBy("boardImg asc")
     @Builder.Default
     private List<BoardImage> images = new ArrayList<>();
+
+    public void setSchedule(Schedule schedule) {
+        this.schedule = schedule;
+    }
 
     public void addImage(BoardImage img) {
         if (this.images == null) this.images = new ArrayList<>();
