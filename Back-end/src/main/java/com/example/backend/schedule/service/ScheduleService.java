@@ -157,6 +157,7 @@ public class ScheduleService {
                             .userId(schedule.getUserId().getUserId())
                             .scheduleType(schedule.getScheduleType().name())
                             .scheduleStyle(schedule.getScheduleStyle())
+                            .isBoarded(schedule.isBoarded())
                             .build();
                 })
                 .collect(Collectors.toList());
