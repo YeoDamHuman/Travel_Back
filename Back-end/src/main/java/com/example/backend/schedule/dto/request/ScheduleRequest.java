@@ -90,6 +90,8 @@ public class ScheduleRequest {
         private BigInteger budget;
         @Schema(description = "그룹 ID (그룹 스케줄인 경우 필수, 개인 스케줄인 경우 null)", example = "a3f12c9b-4567-4d89-9a12-c3b4d6a7f123")
         private UUID groupId;
+        @Schema(description = "시작 장소", example = "서울역")
+        private String startPlace;
         @Schema(description = "스케줄 타입 (PERSONAL, GROUP 중 하나)", example = "GROUP")
         private ScheduleType scheduleType;
         @Schema(description = "스케쥴 스타일", example = "휴양")
@@ -107,6 +109,7 @@ public class ScheduleRequest {
                     .startDate(request.getStartDate())
                     .cartId(schedule.getCartId())
                     .userId(schedule.getUserId())
+                    .startPlace(request.getStartPlace())
                     .groupId(group)
                     .build();
         }
