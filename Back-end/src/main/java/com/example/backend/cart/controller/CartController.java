@@ -33,11 +33,11 @@ public class CartController {
     private final RegionService regionService;
 
     @GetMapping("/cart")
-    @Operation(summary = "장바구니 조회", description = "사용자의 장바구니 내용 조회",
+    @Operation(summary = "장바구니 조회", description = "사용자의 모든 장바구니 내용 조회",
             security = @SecurityRequirement(name = "JWT"))
-    public ResponseEntity<CartResponse.CartDetailResponse> getCart(
+    public ResponseEntity<List<CartResponse.CartDetailResponse>> getCart(
             @AuthenticationPrincipal UserDetails userDetails) {
-        CartResponse.CartDetailResponse response = cartService.getCart(userDetails.getUsername());
+        List<CartResponse.CartDetailResponse> response = cartService.getCart(userDetails.getUsername());
         return ResponseEntity.ok(response);
     }
 
