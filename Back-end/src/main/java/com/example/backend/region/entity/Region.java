@@ -38,7 +38,7 @@ public class Region {
     @Column(name = "region_image", length = 500)
     private String regionImage;
 
-    @Column(name = "description", length = 200)
+    @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
     @Column(name = "view_count", nullable = false)
