@@ -16,7 +16,7 @@ import java.util.Date;
 public class JWTGenerator {
 
     private final Key key;
-    private final long ACCESS_TOKEN_VALIDITY = 1000 * 60 * 30;           // 30분
+    private final long ACCESS_TOKEN_VALIDITY = 1000 * 60 * 3000;           // 30분
     private final long REFRESH_TOKEN_VALIDITY = 1000L * 60 * 60 * 24 * 7;  // 7일
 
     public JWTGenerator(@Value("${jwt.secret}") String secretKey) {
