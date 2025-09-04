@@ -39,7 +39,7 @@ public class AiService {
         log.debug("🤖 생성된 프롬프트: \n{}", prompt);
 
         Map<String, Object> requestBody = Map.of(
-                "model", "gpt-3.5-turbo",
+                "model", "gpt-4o",
                 "messages", List.of(Map.of("role", "user", "content", prompt)),
                 "response_format", Map.of("type", "json_object")
         );
