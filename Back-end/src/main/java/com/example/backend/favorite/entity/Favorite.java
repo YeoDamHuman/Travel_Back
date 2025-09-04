@@ -39,6 +39,12 @@ public class Favorite {
     @Column(name = "region_code", length = 10)
     private String regionCode;
 
+    @Column(name = "l_dong_regn_cd", length = 10)
+    private String lDongRegnCd;
+
+    @Column(name = "l_dong_signgu_cd", length = 10)
+    private String lDongSignguCd;
+
     @Column(name = "created_at", nullable = false)
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
