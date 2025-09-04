@@ -283,9 +283,14 @@ public class ScheduleService {
                 })
                 .collect(Collectors.toList());
 
-        // AiService를 호출하여 최적화된 경로 JSON을 받습니다.
-        String optimizedJson = aiService.getOptimizedRouteJson(schedule.getScheduleId(), schedule.getStartDate(), schedule.getEndDate(), itemsWithLocation)
-                .block();
+        String optimizedJson = aiService.getOptimizedRouteJson(
+                schedule.getScheduleId(),
+                schedule.getStartDate(),
+                schedule.getEndDate(),
+                schedule.getStartPlace(),
+                schedule.getStartTime(),
+                itemsWithLocation
+        ).block();
 
         try {
             // AI 응답을 파싱하여 스케줄 아이템을 업데이트합니다.
