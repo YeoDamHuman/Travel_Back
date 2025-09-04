@@ -61,4 +61,16 @@ public class FavoriteController {
         boolean isFavorite = favoriteService.isFavorite(userDetails.getUsername(), contentId);
         return ResponseEntity.ok(isFavorite);
     }
+
+    @GetMapping("/region")
+    @Operation(summary = "특정 지역 즐겨찾기 목록 조회", 
+               description = "특정 지역에 대한 즐겨찾기 장소 목록 조회 (이름, 사진, 테마, contentId)")
+    public ResponseEntity<FavoriteResponse.FavoriteRegionResponse> getFavoritesByRegion(
+            @Parameter(description = "법정동 시/도 코드 (강원특별자치도=51)", example = "51")
+            @RequestParam String lDongRegnCd,
+            @Parameter(description = "법정동 시 코드 (속초시=210)", example = "210")
+            @RequestParam String lDongSignguCd) {
+        FavoriteResponse.FavoriteRegionResponse response = favoriteService.getFavoritesByRegion(lDongRegnCd, lDongSignguCd);
+        return ResponseEntity.ok(response);
+    }
 }

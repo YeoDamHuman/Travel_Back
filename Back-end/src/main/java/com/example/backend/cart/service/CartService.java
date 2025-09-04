@@ -33,54 +33,57 @@ public class CartService {
     private final TourApiClient tourApiClient;
 
     @Transactional
-    public CartResponse.CartDetailResponse getCart(String userIdString) {
+    public List<CartResponse.CartDetailResponse> getCart(String userIdString) {
         UUID userId = UUID.fromString(userIdString);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
-        Cart cart = cartRepository.findByUserId(user)
-                .orElse(null);
+        List<Cart> carts = cartRepository.findAllByUserId(user);
 
-        if (cart == null) {
-            return CartResponse.CartDetailResponse.builder()
+        if (carts.isEmpty()) {
+            return List.of(CartResponse.CartDetailResponse.builder()
                     .cartId(null)
                     .lDongRegnCd("11")
                     .lDongSignguCd("110")
                     .tours(List.of())
                     .totalCount(0)
                     .totalPrice(0L)
-                    .build();
+                    .build());
         }
 
-        List<Tour> tours = tourRepository.findByCartId(cart);
+        return carts.stream()
+                .map(cart -> {
+                    List<Tour> tours = tourRepository.findByCartId(cart);
 
-        List<CartResponse.TourInfo> tourInfos = tours.stream()
-                .map(tour -> CartResponse.TourInfo.builder()
-                        .tourId(tour.getTourId())
-                        .contentId(tour.getContentId())
-                        .title(tour.getTitle())
-                        .image(tour.getImage())
-                        .tema(tour.getTema())
-                        .longitude(tour.getLongitude())
-                        .latitude(tour.getLatitude())
-                        .address(tour.getAddress())
-                        .category(tour.getCategory())
-                        .price(tour.getPrice())
-                        .build())
+                    List<CartResponse.TourInfo> tourInfos = tours.stream()
+                            .map(tour -> CartResponse.TourInfo.builder()
+                                    .tourId(tour.getTourId())
+                                    .contentId(tour.getContentId())
+                                    .title(tour.getTitle())
+                                    .image(tour.getImage())
+                                    .tema(tour.getTema())
+                                    .longitude(tour.getLongitude())
+                                    .latitude(tour.getLatitude())
+                                    .address(tour.getAddress())
+                                    .category(tour.getCategory())
+                                    .price(tour.getPrice())
+                                    .build())
+                            .collect(Collectors.toList());
+
+                    long totalPrice = tourInfos.stream()
+                            .mapToLong(t -> t.getPrice() != null ? t.getPrice() : 0)
+                            .sum();
+
+                    return CartResponse.CartDetailResponse.builder()
+                            .cartId(cart.getCartId())
+                            .lDongRegnCd(cart.getLDongRegnCd())
+                            .lDongSignguCd(cart.getLDongSignguCd())
+                            .tours(tourInfos)
+                            .totalCount(tourInfos.size())
+                            .totalPrice(totalPrice)
+                            .build();
+                })
                 .collect(Collectors.toList());
-
-        long totalPrice = tourInfos.stream()
-                .mapToLong(t -> t.getPrice() != null ? t.getPrice() : 0)
-                .sum();
-
-        return CartResponse.CartDetailResponse.builder()
-                .cartId(cart.getCartId())
-                .lDongRegnCd(cart.getLDongRegnCd())
-                .lDongSignguCd(cart.getLDongSignguCd())
-                .tours(tourInfos)
-                .totalCount(tourInfos.size())
-                .totalPrice(totalPrice)
-                .build();
     }
 
     @Transactional
@@ -92,7 +95,7 @@ public class CartService {
         Cart cart = cartRepository.findByUserId(user)
                 .orElseGet(() -> createNewCart(user));
 
-        boolean isDuplicate = tourRepository.existsByCartIdAndAddress(cart, tourResponse.getAddress());
+        boolean isDuplicate = tourRepository.existsByCartIdAndContentId(cart, tourResponse.getContentId());
         if (isDuplicate) {
             throw new IllegalArgumentException("이미 장바구니에 추가된 투어입니다.");
         }
@@ -456,7 +459,7 @@ public class CartService {
         Cart cart = cartRepository.findByCartIdAndUserId(cartId, user)
                 .orElseThrow(() -> new IllegalArgumentException("장바구니를 찾을 수 없습니다."));
 
-        boolean isDuplicate = tourRepository.existsByCartIdAndAddress(cart, tourResponse.getAddress());
+        boolean isDuplicate = tourRepository.existsByCartIdAndContentId(cart, tourResponse.getContentId());
         if (isDuplicate) {
             throw new IllegalArgumentException("이미 장바구니에 추가된 투어입니다.");
         }

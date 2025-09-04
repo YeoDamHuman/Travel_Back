@@ -1,10 +1,13 @@
 package com.example.backend.favorite.service;
 
 import com.example.backend.cart.dto.response.CartResponse;
+import com.example.backend.tour.dto.response.TourDetailResponse;
 import com.example.backend.favorite.dto.request.FavoriteRequest;
 import com.example.backend.favorite.dto.response.FavoriteResponse;
 import com.example.backend.favorite.entity.Favorite;
 import com.example.backend.favorite.repository.FavoriteRepository;
+import com.example.backend.tour.entity.Tour;
+import com.example.backend.tour.repository.TourRepository;
 import com.example.backend.tour.webclient.TourApiClient;
 import com.example.backend.user.entity.User;
 import com.example.backend.user.repository.UserRepository;
@@ -24,6 +27,7 @@ public class FavoriteService {
 
     private final FavoriteRepository favoriteRepository;
     private final UserRepository userRepository;
+    private final TourRepository tourRepository;
     private final TourApiClient tourApiClient;
 
     @Transactional
@@ -48,6 +52,8 @@ public class FavoriteService {
                     .placeAddress(tourDetail.getAddress())
                     .placeImage(tourDetail.getImage())
                     .regionCode(tourDetail.getRegion())
+                    .lDongRegnCd(tourDetail.getLDongRegnCd())
+                    .lDongSignguCd(tourDetail.getLDongSignguCd())
                     .build();
 
             favoriteRepository.save(favorite);
@@ -90,6 +96,38 @@ public class FavoriteService {
     public boolean isFavorite(String userIdString, String contentId) {
         User user = findUserById(userIdString);
         return favoriteRepository.existsByUserAndContentId(user, contentId);
+    }
+
+    @Transactional(readOnly = true)
+    public FavoriteResponse.FavoriteRegionResponse getFavoritesByRegion(String lDongRegnCd, String lDongSignguCd) {
+        List<Favorite> favorites = favoriteRepository.findByLDongRegnCdAndLDongSignguCdOrderByCreatedAtDesc(lDongRegnCd, lDongSignguCd);
+
+        List<FavoriteResponse.FavoriteRegionInfo> favoriteInfos = favorites.stream()
+                .map(favorite -> {
+                    // TourAPI에서 tema 정보 가져오기
+                    String tema = "";
+                    try {
+                        CartResponse.TourDetailResponse tourDetail = tourApiClient.getTourDetail(favorite.getContentId());
+                        tema = tourDetail.getTheme() != null ? tourDetail.getTheme() : "";
+                    } catch (Exception e) {
+                        log.warn("TourAPI에서 tema 정보 가져오기 실패 - contentId: {}", favorite.getContentId());
+                    }
+
+                    return FavoriteResponse.FavoriteRegionInfo.builder()
+                            .contentId(favorite.getContentId())
+                            .placeTitle(favorite.getPlaceTitle())
+                            .placeImage(favorite.getPlaceImage())
+                            .tema(tema)
+                            .build();
+                })
+                .collect(Collectors.toList());
+
+        return FavoriteResponse.FavoriteRegionResponse.builder()
+                .favorites(favoriteInfos)
+                .lDongRegnCd(lDongRegnCd)
+                .lDongSignguCd(lDongSignguCd)
+                .totalCount(favoriteInfos.size())
+                .build();
     }
 
     private User findUserById(String userIdString) {

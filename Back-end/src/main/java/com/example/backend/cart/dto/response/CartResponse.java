@@ -95,6 +95,8 @@ public class CartResponse {
         private String tel;
         private String homepage;
         private String overview;
+        private String lDongRegnCd;
+        private String lDongSignguCd;
         private boolean isFavorite;
         private boolean isInCart;
     }

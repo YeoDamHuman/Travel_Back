@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -24,4 +25,6 @@ public interface TourRepository extends JpaRepository<Tour, UUID> {
     int countByCartId(Cart cart);
 
     List<Tour> findByContentIdIn(List<String> contentIds);
+
+    Optional<Tour> findByContentId(String contentId);
 }

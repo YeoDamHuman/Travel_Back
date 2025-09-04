@@ -40,4 +40,26 @@ public class FavoriteResponse {
         private String message;
         private boolean isFavorite;
     }
+
+    @Getter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class FavoriteRegionInfo {
+        private String contentId;
+        private String placeTitle;
+        private String placeImage;
+        private String tema;
+    }
+
+    @Getter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class FavoriteRegionResponse {
+        private List<FavoriteRegionInfo> favorites;
+        private String lDongRegnCd;
+        private String lDongSignguCd;
+        private int totalCount;
+    }
 }

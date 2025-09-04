@@ -417,6 +417,10 @@ public class TourApiClient {
             // 상세 페이지용 추가 정보 (선택사항)
             String tel = commonData.path("tel").asText("");
             String homepage = commonData.path("homepage").asText("");
+            
+            // 지역 코드 정보
+            String lDongRegnCd = commonData.path("lDongRegnCd").asText("");
+            String lDongSignguCd = commonData.path("lDongSignguCd").asText("");
 
             return CartResponse.TourDetailResponse.builder()
                     .contentId(contentId)
@@ -431,6 +435,8 @@ public class TourApiClient {
                     .tel(tel)                        // 전화번호 (상세 페이지용)
                     .homepage(homepage)              // 홈페이지 (상세 페이지용)
                     .overview("")                    // overview 제거 (불필요)
+                    .lDongRegnCd(lDongRegnCd)       // 법정동 시/도 코드
+                    .lDongSignguCd(lDongSignguCd)   // 법정동 시군구 코드
                     .isFavorite(false)              // 즐겨찾기 상태
                     .isInCart(false)                // 장바구니 상태
                     .build();
@@ -717,6 +723,8 @@ public class TourApiClient {
                 .tel("")
                 .homepage("")
                 .overview("상세 정보를 조회할 수 없습니다.")
+                .lDongRegnCd("")
+                .lDongSignguCd("")
                 .isFavorite(false)
                 .isInCart(false)
                 .build();
