@@ -26,10 +26,6 @@ public class ScheduleItemRequest {
         private String contentId;
         @Schema(description = "일정의 며칠째인지 (1일부터 시작)", example = "2")
         private Integer dayNumber;
-        @Schema(description = "일정 시작 시간 (HH:mm:ss 형식)", example = "09:30:00")
-        private LocalTime startTime;
-        @Schema(description = "일정 종료 시간 (HH:mm:ss 형식)", example = "11:00:00")
-        private LocalTime endTime;
         @Schema(description = "일정 메모", example = "오전 회의 및 준비 시간")
         private String memo;
         @Schema(description = "예상 비용", example = "15000")
@@ -48,8 +44,6 @@ public class ScheduleItemRequest {
             return ScheduleItem.builder().
                     contentId(request.getContentId()).
                     dayNumber(request.getDayNumber()).
-                    startTime(request.getStartTime()).
-                    endTime(request.getEndTime()).
                     memo(request.getMemo()).
                     cost(request.getCost()).
                     scheduleId(schedule).
@@ -94,8 +88,6 @@ public class ScheduleItemRequest {
                     scheduleItemId(request.getScheduleItemId()).
                     contentId(request.getContentId()).
                     dayNumber(request.getDayNumber()).
-                    startTime(request.getStartTime()).
-                    endTime(request.getEndTime()).
                     memo(request.getMemo()).
                     cost(request.getCost()).
                     order(request.getOrder()).

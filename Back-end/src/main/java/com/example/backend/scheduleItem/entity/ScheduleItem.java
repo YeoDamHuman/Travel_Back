@@ -27,12 +27,6 @@ public class ScheduleItem {
     @Column(name = "day_number", nullable = true)
     private int dayNumber;
 
-    @Column(name = "start_time", nullable = true)
-    private LocalTime startTime;
-
-    @Column(name = "end_time", nullable = true)
-    private LocalTime endTime;
-
     @Column(name = "memo", length = 100, nullable = true)
     private String memo;
 
