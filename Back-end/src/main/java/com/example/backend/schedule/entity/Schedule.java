@@ -55,6 +55,10 @@ public class Schedule {
     @Column(name = "startTime", nullable = false)
     private LocalTime startTime;
 
+    @Builder.Default
+    @Column(name = "is_boarded", nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE")
+    private boolean isBoarded = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "group_id", nullable = true)
     private Group groupId;
