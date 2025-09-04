@@ -16,6 +16,7 @@ import com.example.backend.schedule.entity.ScheduleType;
 import com.example.backend.schedule.repository.ScheduleRepository;
 import com.example.backend.scheduleItem.entity.ScheduleItem;
 import com.example.backend.scheduleItem.repository.ScheduleItemRepository;
+import com.example.backend.tour.entity.TourCategory;
 import com.example.backend.tour.webclient.TourApiClient;
 import com.example.backend.user.entity.User;
 import com.example.backend.user.repository.UserRepository;
@@ -266,7 +267,7 @@ public class ScheduleService {
         // 위치 정보와 제목 정보를 Tour API 클라이언트를 통해 가져옵니다.
         Map<String, Map<String, Double>> locationMap = tourApiClient.getTourLocationMapByContentIds(contentIds);
         Map<String, String> tourTitlesMap = tourApiClient.getTourTitlesMapByContentIds(contentIds);
-
+        Map<String, TourCategory> tourCategoriesMap = tourApiClient.getTourCategoriesMapByContentIds(contentIds);
         // AiService에 전달할 DTO 리스트를 생성합니다. (title 포함)
         List<AiService.ItemWithLocationInfo> itemsWithLocation = items.stream()
                 .map(item -> {
@@ -275,7 +276,10 @@ public class ScheduleService {
                     String title = tourTitlesMap.getOrDefault(contentId, "정보 없음");
                     double latitude = loc.getOrDefault("latitude", 0.0);
                     double longitude = loc.getOrDefault("longitude", 0.0);
-                    return new AiService.ItemWithLocationInfo(contentId, title, latitude, longitude);
+                    String category = Optional.ofNullable(tourCategoriesMap.get(contentId))
+                            .map(Enum::name)
+                            .orElse("ETC"); // 기본값 ETC
+                    return new AiService.ItemWithLocationInfo(contentId, title, latitude, longitude, category);
                 })
                 .collect(Collectors.toList());
 
@@ -298,8 +302,6 @@ public class ScheduleService {
                 String contentId = itemData.get("contentId").toString();
                 int order = (int) itemData.get("order");
                 int dayNumber = (int) itemData.get("dayNumber");
-                String startTimeStr = (String) itemData.get("start_time");
-                String endTimeStr = (String) itemData.get("end_time");
 
                 items.stream()
                         .filter(item -> item.getContentId().equals(contentId))

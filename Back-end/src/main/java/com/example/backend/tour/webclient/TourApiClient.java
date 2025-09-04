@@ -2,6 +2,7 @@ package com.example.backend.tour.webclient;
 
 import com.example.backend.cart.dto.response.CartResponse;
 import com.example.backend.tour.entity.Tour;
+import com.example.backend.tour.entity.TourCategory;
 import com.example.backend.tour.repository.TourRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -867,5 +868,22 @@ public class TourApiClient {
                         },
                         (existingValue, newValue) -> existingValue // 중복 키 발생 시 기존 값을 사용
                 ));
+    }
+
+    /**
+     * [추가] contentId 리스트로 TourCategory Map을 조회 (DB 사용)
+     * @param contentIds 조회할 Tour의 contentId 목록
+     * @return Map<contentId, TourCategory> 형태의 TourCategory 정보
+     */
+    public Map<String, TourCategory> getTourCategoriesMapByContentIds(List<String> contentIds) {
+        log.info("=== DB에서 contentId 리스트로 TourCategory Map 조회 시작 - contentIds 개수: {} ===", contentIds.size());
+        if (contentIds == null || contentIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        List<Tour> tours = tourRepository.findByContentIdIn(contentIds);
+
+        return tours.stream()
+                .filter(tour -> tour.getCategory() != null) // TourCategory가 null이 아닌 경우만 필터링
+                .collect(Collectors.toMap(Tour::getContentId, Tour::getCategory, (existing, replacement) -> existing));
     }
 }
