@@ -99,7 +99,7 @@ public class CartService {
         if (isDuplicate) {
             throw new IllegalArgumentException("이미 장바구니에 추가된 투어입니다.");
         }
-
+        System.out.println(tourResponse);
         Tour tour = Tour.builder()
                 .contentId(tourResponse.getContentId())
                 .contentTypeId(tourResponse.getContentTypeId())
@@ -535,6 +535,9 @@ public class CartService {
                 .tel(tourDetail.getTel())
                 .overview(tourDetail.getOverview())
                 .tema(tourDetail.getTheme())
+                .lDongRegnCd(tourDetail.getLDongRegnCd())
+                .lDongSignguCd(tourDetail.getLDongSignguCd())
+                .firstImage(tourDetail.getImage())
                 .cartId(cart)
                 .build();
 
