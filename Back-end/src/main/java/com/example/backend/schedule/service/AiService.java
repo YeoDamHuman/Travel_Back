@@ -12,6 +12,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -29,10 +30,12 @@ public class AiService {
 
     public record ItemWithLocationInfo(String contentId, String title, double latitude, double longitude, String category) {}
 
-    public Mono<String> getOptimizedRouteJson(UUID scheduleId, LocalDate startDate, LocalDate endDate, List<ItemWithLocationInfo> itemsWithLocation) {
+    // 👇 [수정] ScheduleService에서 넘겨주는 startPlace, startTime 파라미터를 받도록 수정
+    public Mono<String> getOptimizedRouteJson(UUID scheduleId, LocalDate startDate, LocalDate endDate, String startPlace, LocalTime startTime, List<ItemWithLocationInfo> itemsWithLocation) {
         log.info("🚀 AI 경로 최적화 시작 - Schedule ID: {}", scheduleId);
 
-        String prompt = createOptimizationPrompt(scheduleId, startDate, endDate, itemsWithLocation);
+        // 👇 [수정] createOptimizationPrompt 호출 시 startPlace, startTime 전달
+        String prompt = createOptimizationPrompt(scheduleId, startDate, endDate, startPlace, startTime, itemsWithLocation);
         log.debug("🤖 생성된 프롬프트: \n{}", prompt);
 
         Map<String, Object> requestBody = Map.of(
@@ -66,7 +69,8 @@ public class AiService {
                 });
     }
 
-    private String createOptimizationPrompt(UUID scheduleId, LocalDate startDate, LocalDate endDate, List<ItemWithLocationInfo> items) {
+    // 👇 [수정] startPlace, startTime 파라미터를 받도록 수정
+    private String createOptimizationPrompt(UUID scheduleId, LocalDate startDate, LocalDate endDate, String startPlace, LocalTime startTime, List<ItemWithLocationInfo> items) {
         log.info("프롬프트 생성을 시작합니다...");
 
         String itemsJson;
@@ -88,7 +92,7 @@ public class AiService {
             3.  **시간 할당 (내부 계산용):**
                 * **방문 시간:** 각 장소당 평균 방문 시간을 2시간으로 할당.
                 * **이동 시간:** 위도와 경도를 참고하여, 장소 간 이동 시간을 30분으로 할당.
-                * **시작 시간:** 첫째 날의 일정은 오전 10:00에 시작하는 것으로 가정.
+                * **시작 시간:** 첫째 날의 일정은 **'최초 출발 시간'**에 **'최초 출발 장소'**에서 시작하는 것으로 설정해줘.
                 * 이 시간 규칙들은 최적의 순서와 날짜 배분을 위해 **너의 내부 계산에만 사용**하고, 최종 JSON 결과에는 포함하지 마.
             4.  **일정 배분:** 각 날짜(dayNumber)에 할당되는 아이템의 개수가 최대한 균등하도록 배분해줘.
             5.  **최적화:** 너는 모든 장소를 방문하는 가장 효율적인 경로를 찾아야 해. 이는 **다익스트라(Dijkstra) 알고리즘**이나 **최단 경로 찾기(Shortest Path Finding)**와 유사한 접근 방식을 사용하여, 위도와 경도 데이터를 기반으로 전체 이동 거리를 최소화하는 것을 의미해.
@@ -97,6 +101,8 @@ public class AiService {
 
             **입력 정보:**
             * 여행 기간: %s 부터 %s 까지
+            * ** 최초 출발 장소: %s**
+            * ** 최초 출발 시간: %s**
             * 스케줄 ID: %s
             * 스케줄 아이템 목록 (이제 category 포함):
             %s
@@ -115,6 +121,8 @@ public class AiService {
             """,
                 startDate,
                 endDate,
+                startPlace,
+                startTime,
                 scheduleId,
                 itemsJson,
                 scheduleId
