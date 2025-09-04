@@ -75,5 +75,8 @@ public class Schedule {
     @JoinColumn(name = "cart_id", referencedColumnName = "cart_id", nullable = false)
     private Cart cartId;
 
+    public void setIsBoarded(boolean isBoarded) {
+        this.isBoarded = isBoarded;
+    }
 }
 
