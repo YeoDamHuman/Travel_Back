@@ -817,7 +817,11 @@ public class TourApiClient {
             List<Tour> tours = tourRepository.findByContentIdIn(contentIds);
 
             Map<String, String> titleMap = tours.stream()
-                    .collect(Collectors.toMap(Tour::getContentId, Tour::getTitle));
+                    .collect(Collectors.toMap(
+                            Tour::getContentId,
+                            Tour::getTitle,
+                            (existing, replacement) -> existing // 중복 contentId 발생 시 기존 값 유지
+                    ));
 
             log.info("DB에서 총 {}개의 엔티티를 Map으로 변환 완료", titleMap.size());
             return titleMap;
@@ -848,7 +852,8 @@ public class TourApiClient {
                             location.put("latitude", tour.getLatitude() != null ? tour.getLatitude() : 0.0);
                             location.put("longitude", tour.getLongitude() != null ? tour.getLongitude() : 0.0);
                             return location;
-                        }
+                        },
+                        (existing, replacement) -> existing
                 ));
     }
 
