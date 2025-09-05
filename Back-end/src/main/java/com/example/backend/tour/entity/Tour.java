@@ -7,7 +7,12 @@ import lombok.*;
 import java.util.UUID;
 
 @Entity
-@Table(name = "tour")
+@Table(
+        name = "tour",
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_cart_content", columnNames = {"cart_id", "content_id"})
+        }
+)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
@@ -94,7 +99,7 @@ public class Tour {
     @Column(name = "lcls_systm3", length = 50)
     private String lclsSystm3;
 
-    @Column(name = "content_id", length = 100, unique = true)
+    @Column(name = "content_id", length = 100)
     private String contentId;
 
     @Column(name = "content_type_id", length = 100)
