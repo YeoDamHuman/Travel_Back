@@ -312,17 +312,28 @@ public class ScheduleService {
                         .filter(item -> item.getContentId().equals(contentId))
                         .findFirst()
                         .ifPresent(originalItem -> {
-                            ScheduleItem newItem = ScheduleItem.builder()
-                                    .scheduleItemId(originalItem.getScheduleItemId())
+                            boolean isAccommodation = Optional.ofNullable(tourCategoriesMap.get(contentId))
+                                    .map(Enum::name)
+                                    .orElse("")
+                                    .equals("ACCOMMODATION");
+
+                            ScheduleItem.ScheduleItemBuilder builder = ScheduleItem.builder()
                                     .contentId(originalItem.getContentId())
                                     .memo(originalItem.getMemo())
                                     .cost(originalItem.getCost())
                                     .scheduleId(originalItem.getScheduleId())
                                     .order(order)
-                                    .dayNumber(dayNumber)
-                                    .build();
+                                    .dayNumber(dayNumber);
 
-                            updatedItems.add(newItem);
+                            if (isAccommodation) {
+                                // 숙소는 여러 날에 반복될 수 있으므로 새로운 PK 발급
+                                builder.scheduleItemId(UUID.randomUUID());
+                            } else {
+                                // 기존 아이템은 업데이트만 (중복 방지)
+                                builder.scheduleItemId(originalItem.getScheduleItemId());
+                            }
+
+                            updatedItems.add(builder.build());
                         });
             }
 

@@ -170,6 +170,12 @@ public class BoardService {
             throw new SecurityException("본인이 작성한 게시글만 삭제할 수 있습니다.");
         }
 
+        Schedule schedule = board.getSchedule();
+        if (schedule != null) {
+            schedule.setIsBoarded(false);
+            scheduleRepository.save(schedule);
+        }
+
         boardRepository.delete(board);
     }
 
