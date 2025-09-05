@@ -1,5 +1,6 @@
 package com.example.backend.scheduleItem.service;
 import com.example.backend.schedule.entity.Schedule;
+import com.example.backend.schedule.repository.ScheduleRepository;
 import com.example.backend.schedule.service.ScheduleService;
 import com.example.backend.scheduleItem.dto.request.ScheduleItemRequest.ScheduleItemCreateRequest;
 import com.example.backend.scheduleItem.dto.request.ScheduleItemRequest.ScheduleItemUpdateRequest;
@@ -22,6 +23,7 @@ import static com.example.backend.scheduleItem.dto.request.ScheduleItemRequest.S
 @RequiredArgsConstructor
 public class ScheduleItemService {
     private final ScheduleItemRepository scheduleItemRepository;
+    private final ScheduleRepository scheduleRepository;
 
     /**
      * 스케쥴 아이템을 단일 생성합니다.
@@ -53,7 +55,12 @@ public class ScheduleItemService {
      */
     @Transactional
     public UUID itemUpdate(ScheduleItemUpdateRequest request) {
-        ScheduleItem scheduleItem = ScheduleItemUpdateRequest.toEntity(request);
+
+        Schedule schedule = scheduleRepository.findById(request.getScheduleId())
+                .orElseThrow(() -> new EntityNotFoundException("해당 스케줄을 찾을 수 없습니다."));
+
+        ScheduleItem scheduleItem = ScheduleItemUpdateRequest.toEntity(request, schedule);
+
         ScheduleItem item = scheduleItemRepository.save(scheduleItem);
         return item.getScheduleItemId();
     }
@@ -65,9 +72,22 @@ public class ScheduleItemService {
      * @throws EntityNotFoundException 주어진 ID에 해당하는 스케쥴 아이템을 찾을 수 없을 경우
      */
     @Transactional
-    public void itemDelete(UUID scheduleItemId) {
-        scheduleItemRepository.findById(scheduleItemId)
+    public void itemDelete(UUID scheduleId, UUID scheduleItemId) {
+        // 1. 스케줄 존재 확인
+        scheduleRepository.findById(scheduleId)
+                .orElseThrow(() -> new EntityNotFoundException("해당 스케쥴을 찾을 수 없습니다."));
+
+        // 2. 아이템 존재 확인
+        ScheduleItem item = scheduleItemRepository.findById(scheduleItemId)
                 .orElseThrow(() -> new EntityNotFoundException("해당 스케쥴 아이템을 찾을 수 없습니다."));
-        scheduleItemRepository.deleteById(scheduleItemId);
+
+        // (선택) 아이템이 해당 스케줄에 속해 있는지도 체크
+        if (!item.getScheduleId().getScheduleId().equals(scheduleId)) {
+            throw new IllegalArgumentException("이 스케쥴에 속하지 않는 아이템입니다.");
+        }
+
+        // 3. 삭제
+        scheduleItemRepository.delete(item);
     }
+
 }

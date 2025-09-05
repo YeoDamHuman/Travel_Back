@@ -82,16 +82,20 @@ public class ScheduleItemController {
      * @return 성공 시 HTTP 204 No Content 응답
      * @apiNote {@link ScheduleItemService#itemDelete(UUID)}를 호출하여 스케쥴 아이템을 삭제합니다.
      */
-    @DeleteMapping("/delete/{scheduleItemId}")
-    @Operation(summary = "스케쥴 아이템 삭제", description = "특정 스케쥴 아이템을 삭제하는 API")
+    @DeleteMapping("/delete/{scheduleId}/{scheduleItemId}")
+    @Operation(summary = "스케쥴 아이템 삭제", description = "특정 스케쥴의 특정 아이템을 삭제하는 API")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "204", description = "성공적으로 스케쥴 아이템 삭제"),
-            @ApiResponse(responseCode = "404", description = "해당 스케쥴 아이템을 찾을 수 없음")
+            @ApiResponse(responseCode = "404", description = "해당 스케쥴 또는 스케쥴 아이템을 찾을 수 없음")
     })
     public ResponseEntity<?> deleteItem(
-            @Parameter(description = "스케쥴 아이템 ID", example = "a3f12c9b-4567-4d89-9a12-c3b4d6a7f123")
+            @Parameter(description = "스케쥴 ID", example = "a3f12c9b-4567-4d89-9a12-c3b4d6a7f123")
+            @PathVariable UUID scheduleId,
+            @Parameter(description = "스케쥴 아이템 ID", example = "b7f23c9b-4567-4d89-9a12-c3b4d6a7f456")
             @PathVariable UUID scheduleItemId) {
-        scheduleItemService.itemDelete(scheduleItemId);
+
+        scheduleItemService.itemDelete(scheduleId, scheduleItemId);
         return ResponseEntity.noContent().build();
     }
+
 }

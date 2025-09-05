@@ -62,6 +62,8 @@ public class ScheduleItemRequest {
     public static class ScheduleItemUpdateRequest {
         @Schema(description = "스케쥴 아이템 ID", example = "123e4567-e89b-12d3-a456-426614174000")
         private UUID scheduleItemId;
+        @Schema(description = "스케쥴 ID", example = "123e4567-e89b-12d3-a456-426614174000")
+        private UUID scheduleId;
         @Schema(description = "장소 ID", example = "123e4567-e89b-12d3-a456-426614174000")
         private String contentId;
         @Schema(description = "일정의 며칠째인지 (1일부터 시작)", example = "2")
@@ -80,12 +82,14 @@ public class ScheduleItemRequest {
         /**
          * DTO의 정보를 기반으로 새로운 ScheduleItem 엔티티를 생성합니다.
          *
-         * @param request 스케쥴 아이템 수정 요청 DTO
+         * @param request  스케쥴 아이템 수정 요청 DTO
+         * @param schedule
          * @return 생성된 ScheduleItem 엔티티
          */
-        public static ScheduleItem toEntity(ScheduleItemUpdateRequest request) {
+        public static ScheduleItem toEntity(ScheduleItemUpdateRequest request, Schedule schedule) {
             return ScheduleItem.builder().
                     scheduleItemId(request.getScheduleItemId()).
+                    scheduleId(schedule).
                     contentId(request.getContentId()).
                     dayNumber(request.getDayNumber()).
                     memo(request.getMemo()).
@@ -94,4 +98,5 @@ public class ScheduleItemRequest {
                     build();
         }
     }
+
 }
