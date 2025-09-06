@@ -134,4 +134,21 @@ public class ScheduleController {
         scheduleService.optimizeRoute(scheduleId);
         return ResponseEntity.ok().build();
     }
+
+    /**
+     *  GraphHopper 서비스를 사용하여 스케줄의 최적 경로를 계산합니다.
+     * <p>
+     * 이 엔드포인트는 외부 AI 서비스를 호출하여 주어진 스케줄 아이템들의 순서와 시간을 최적화하여 가장 효율적인 동선을 제공합니다.
+     *
+     * @param scheduleId 최적화할 스케줄의 ID.
+     * @return 최적화 과정이 시작되었음을 나타내는 OK 상태의 {@link ResponseEntity}.
+     */
+    @PostMapping("/optimize/test/{scheduleId}")
+    @Operation(summary = "최적 동선", description = "스케쥴 최적 동선을 위해 GraphHopper를 사용하는 API.")
+    public ResponseEntity<?> optimizeTestSchedule(
+            @Parameter(description = "스케쥴 ID", example = "b4e8f9a0-1234-4c56-8d7e-9f12345b6789")
+            @PathVariable UUID scheduleId) {
+        scheduleService.optimizeTestRoute(scheduleId);
+        return ResponseEntity.ok().build();
+    }
 }
