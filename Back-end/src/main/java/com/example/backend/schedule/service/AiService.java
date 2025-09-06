@@ -30,11 +30,9 @@ public class AiService {
 
     public record ItemWithLocationInfo(String contentId, String title, double latitude, double longitude, String category) {}
 
-    // 👇 [수정] ScheduleService에서 넘겨주는 startPlace, startTime 파라미터를 받도록 수정
     public Mono<String> getOptimizedRouteJson(UUID scheduleId, LocalDate startDate, LocalDate endDate, String startPlace, LocalTime startTime, List<ItemWithLocationInfo> itemsWithLocation) {
         log.info("🚀 AI 경로 최적화 시작 - Schedule ID: {}", scheduleId);
 
-        // 👇 [수정] createOptimizationPrompt 호출 시 startPlace, startTime 전달
         String prompt = createOptimizationPrompt(scheduleId, startDate, endDate, startPlace, startTime, itemsWithLocation);
         log.debug("🤖 생성된 프롬프트: \n{}", prompt);
 
@@ -69,7 +67,6 @@ public class AiService {
                 });
     }
 
-    // 👇 [수정] startPlace, startTime 파라미터를 받도록 수정
     private String createOptimizationPrompt(UUID scheduleId, LocalDate startDate, LocalDate endDate, String startPlace, LocalTime startTime, List<ItemWithLocationInfo> items) {
         log.info("프롬프트 생성을 시작합니다...");
 
@@ -83,49 +80,85 @@ public class AiService {
         }
 
         return String.format("""
-            너는 여행 일정 최적화 및 JSON 변환 전문가야.
-            아래의 여행 기간과 장소 목록을 참고하여 최적의 여행 일정을 구성하고, 지정된 JSON 형식으로만 반환해줘.
+            너는 세계 최고의 여행 일정 최적화 전문가 AI다. 너의 임무는 주어진 여행 정보와 장소 목록을 바탕으로, 가장 효율적이고 논리적인 여행 계획을 세운 뒤, 반드시 지정된 JSON 형식으로만 결과를 반환하는 것이다. 다른 부가적인 설명은 절대 포함해서는 안 된다.
 
-            **작업 규칙:**
-            1.  **사고 과정:** 너의 작업을 **Step-by-step**으로 신중하게 생각하고, 모든 규칙을 준수한 후에 최종 JSON을 출력해줘.
-            2.  **역할 및 목적:** 주어진 장소들을 가장 효율적인 동선으로 정렬하고, 각 장소에 적절한 방문 일자를 할당하는 것이 목표야.
-            3.  **시간 할당 (내부 계산용):**
-                * **방문 시간:** 각 장소당 평균 방문 시간을 2시간으로 할당.
-                * **이동 시간:** 위도와 경도를 참고하여, 장소 간 이동 시간을 30분으로 할당.
-                * **시작 시간:** 첫째 날의 일정은 **'최초 출발 시간'**에 **'최초 출발 장소'**에서 시작하는 것으로 설정해줘.
-                * 이 시간 규칙들은 최적의 순서와 날짜 배분을 위해 **너의 내부 계산에만 사용**하고, 최종 JSON 결과에는 포함하지 마.
-            4.  **일정 배분:** 각 날짜(dayNumber)에 할당되는 아이템의 개수가 최대한 균등하도록 배분해줘.
-            5.  **최적화:** 너는 모든 장소를 방문하는 가장 효율적인 경로를 찾아야 해. 이는 **다익스트라(Dijkstra) 알고리즘**이나 **최단 경로 찾기(Shortest Path Finding)**와 유사한 접근 방식을 사용하여, 위도와 경도 데이터를 기반으로 전체 이동 거리를 최소화하는 것을 의미해.
-            6.  **JSON 형식:** 아래에 제시된 JSON 구조를 정확하게 따르고, 다른 설명이나 텍스트는 일체 포함하지 마. 반드시 모든 규칙과 최적화 과정을 거친 후에 이 형식에 맞춰 출력해야 해.
-            7.  **카테고리 고려:** 스케줄 아이템의 `category` 정보를 바탕으로 일정을 지능적으로 구성해줘.\s
-                * 'RESTAURANT'는 점심/저녁 시간대에 배치
-                * 'ACCOMMODATION'은 하루 일정의 마지막에 배치
-                * 'TOURIST_SPOT', 'LEISURE', 'HEALING' 등 나머지 활동은 그 사이에 배치
-            8.  **숙소 배정 규칙 (중요):**
-                * **첫째 날 마지막 일정, 중간 날들의 첫 일정과 마지막 일정, 마지막 날 첫 일정은 반드시 숙소(ACCOMMODATION)여야 함.**
-                * **숙소(ACCOMMODATION)만 여러 날에 중복 배정될 수 있음.**
-                * 만약 여러 개의 숙소가 제공되면, 하루의 종료 숙소와 다음 날 시작 숙소는 반드시 동일해야 함.
-                * 마지막 날의 첫 일정 숙소 이후에는 숙소가 나오면 안 됨.
+            ---
+            ### **[1] 최종 목표**
+            모든 제약 조건을 준수하여, 여행 기간 내 각 장소의 방문일(`dayNumber`)과 방문 순서(`order`)를 결정한다.
 
-            **입력 정보:**
-            * 여행 기간: %s 부터 %s 까지
-            * ** 최초 출발 장소: %s**
-            * ** 최초 출발 시간: %s**
-            * 스케줄 ID: %s
-            * 스케줄 아이템 목록 (이제 category 포함):
-            %s
+            ---
+            ### **[2] 입력 데이터 형식**
+            너는 아래와 같은 형식의 데이터를 입력받게 될 것이다.
+            * `scheduleId`: 여행 일정의 고유 ID (문자열)
+            * `dateRange`: 여행 기간 (예: "2025-07-01 to 2025-07-10")
+            * `startPlace`: 첫째 날 여행 시작 장소 (예: "서울역")
+            * `startTime`: 첫째 날 여행 시작 시간 (예: "09:00")
+            * `items`: 방문할 장소 목록 (JSON 배열). 각 장소는 `contentId`, `title`, `latitude`, `longitude`, `category` 정보를 포함한다.
 
-            **JSON 출력 형식:**
+            ---
+            ### **[3] 출력 데이터 형식 (매우 중요!)**
+            너의 최종 응답은 반드시 아래 JSON 구조를 따라야 한다. 코드 블록 마커나 다른 설명 없이, 순수한 JSON 객체 하나만 출력해야 한다.
+            ```json
             {
-              "scheduleId": "%s",
+              "scheduleId": "입력받은 스케줄 ID",
               "ScheduleItems": [
-                 {
-                   "order": 1,
-                   "contentId": "장소의 content_id",
-                   "dayNumber": 1
-                 }
+                {
+                  "order": 1,
+                  "contentId": "장소의 contentId",
+                  "dayNumber": 1
+                }
               ]
             }
+            ```
+
+            ---
+            ### **[4] 핵심 작업 규칙**
+
+            **[A] 시간 제약 조건 (내부 계산용)**
+            * 하루 활동 시간은 **09:00부터 22:00까지**로 가정한다.
+            * 모든 장소(숙소 제외)는 평균 **2시간** 머무는 것으로 계산한다.
+            * 장소 간 이동 시간은 평균 **30분**으로 계산한다.
+            * 이 시간 정보는 최적의 일정을 짜기 위한 너의 내부 계산에만 사용하고, 최종 JSON 출력에는 포함하지 않는다.
+
+            **[B] 숙소 배정 규칙 (최우선 순위!)**
+            * `items` 목록에서 `category`가 `ACCOMMODATION`인 장소들을 먼저 식별한다.
+            * **1일차:** `items`에 포함된 **첫 번째 숙소**를 1일차 일정의 **마지막(`order`가 가장 큼) 장소**로 배정한다.
+            * **중간일 (2일차 ~ 마지막 전날):**
+                1. **이전 날의 숙소**를 해당일의 **첫 번째(`order`: 1) 장소**로 배정한다.
+                2. `items`에 포함된 **다음 순서의 숙소**를 해당일의 **마지막 장소**로 배정한다.
+            * **마지막 날:** **이전 날의 숙소**를 마지막 날의 **첫 번째(`order`: 1) 장소**로 배정한다. 그 이후로는 숙소를 배정하지 않는다.
+
+            **[C] 카테고리별 일정 계획 규칙**
+            * **숙소(`ACCOMMODATION`)**: 규칙 [B]에 따라 가장 먼저 배정한다.
+            * **식당(`RESTAURANT`)**: 각 날짜별로 **점심(12:00~14:00), 저녁(18:00~20:00) 시간대**에 방문하도록 일정을 구성한다. 하루에 2개의 식당을 배정하는 것을 기본으로 한다.
+            * **기타 장소(`TOURIST_SPOT`, `LEISURE`, `HEALING`):** 숙소와 식당이 배정된 사이의 빈 시간대에 채워 넣는다.
+
+            **[D] 균등 분배 및 경로 최적화 규칙**
+            1. 규칙 [B]와 [C]에 따라 숙소와 식당을 각 날짜에 먼저 배정한다.
+            2. 남아있는 **기타 장소**들을 **(총 장소 개수 / 총 여행일수)** 계산에 따라 각 날짜에 균등하게 분배한다.
+            3. 각 날짜별로 배정된 모든 장소들에 대해, `startPlace`와 위도/경도를 기반으로 **전체 이동 거리가 가장 짧아지는 방문 순서(`order`)**를 결정한다.
+
+            ---
+            ### **[5] 사고 과정 (반드시 따를 것)**
+            아래의 단계를 순서대로 반드시 따라서 최종 JSON을 생성해야 한다.
+            1.  **입력 분석**: `scheduleId`, 여행 기간, 출발 정보, 장소 목록(`items`)을 정확히 파악하고 전체 여행 일수를 계산한다.
+            2.  **장소 분류**: `items` 목록을 `ACCOMMODATION`, `RESTAURANT`, `OTHERS` 세 그룹으로 분류한다.
+            3.  **숙소 배정**: 규칙 [B]에 따라, 각 날짜별 일정 목록에 숙소를 먼저 배치한다.
+            4.  **식당 배정**: 규칙 [C]에 따라, 남은 식당들을 각 날짜의 점심/저녁 시간 슬롯에 맞게 배정한다.
+            5.  **나머지 장소 배정**: `OTHERS` 그룹의 장소들을 규칙 [D]에 따라 각 날짜에 균등하게 분배한다.
+            6.  **일자별 경로 최적화**: 각 날짜별로 완성된 장소 목록을 대상으로, 출발지부터 시작하여 전체 이동 거리가 최소화되도록 방문 순서(`order`)를 최종 결정한다.
+            7.  **최종 JSON 생성**: 위 6단계까지의 결과를 바탕으로, 규칙 [3]에서 정의한 JSON 출력 형식에 맞춰 최종 결과물을 생성한다.
+
+            ---
+            ### **[6] 입력 정보**
+            * 여행 기간: %s 부터 %s 까지
+            * 최초 출발 장소: %s
+            * 최초 출발 시간: %s
+            * 스케줄 ID: %s
+            * 스케줄 아이템 목록:
+            %s
+
+            이제, 위의 모든 규칙과 사고 과정을 거쳐 최종 JSON을 출력해줘.
             """,
                 startDate,
                 endDate,
