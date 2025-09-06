@@ -170,6 +170,10 @@ jobs:
             DEPLOY_PATH="/home/ubuntu/app"
             cd ${DEPLOY_PATH}
 
+            echo "🗺️ GraphHopper 지도 데이터를 다운로드합니다..."
+            mkdir -p map-data
+            curl -L -o map-data/south-korea-latest.osm.pbf https://download.geofabrik.de/asia/south-korea-latest.osm.pbf
+
             echo "🔥 기존 Spring Boot 애플리케이션을 종료합니다 (포트 8080)..."
             PID=$(sudo lsof -t -i:8080)
             if [ -n "$PID" ]; then
