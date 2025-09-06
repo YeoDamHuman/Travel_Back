@@ -2,9 +2,6 @@ package com.example.backend.schedule.service;
 
 import com.example.backend.cart.entity.Cart;
 import com.example.backend.common.auth.AuthUtil;
-import com.example.backend.map.dto.request.MapRequest;
-import com.example.backend.map.dto.response.MapResponse;
-import com.example.backend.map.service.MapService;
 import com.example.backend.region.service.RegionService;
 import com.example.backend.schedule.dto.request.ScheduleRequest.ScheduleCreateRequest;
 import com.example.backend.schedule.dto.request.ScheduleRequest.ScheduleUpdateRequest;
@@ -55,7 +52,6 @@ public class ScheduleService {
     private final ObjectMapper objectMapper;
     private final TourApiClient tourApiClient;
     private final RegionService regionService;
-    private final MapService mapService;
     /**
      * 새로운 스케줄을 생성하고 스케줄 아이템들을 저장합니다.
      *
@@ -347,149 +343,5 @@ public class ScheduleService {
             log.error("AI 응답 JSON 파싱 실패", e);
             throw new RuntimeException("AI 응답 JSON 파싱에 실패했습니다.", e);
         }
-    }
-
-    @Transactional
-    public void optimizeTestRoute(UUID scheduleId) {
-        // [1단계: 모든 데이터 준비]
-        UUID currentUserId = getCurrentUserId();
-        scheduleFilter.validateScheduleAccess(scheduleId, currentUserId);
-
-        Schedule schedule = scheduleRepository.findById(scheduleId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 스케줄을 찾을 수 없습니다."));
-
-        List<ScheduleItem> originalItems = scheduleItemRepository.findAllByScheduleId_ScheduleId(scheduleId);
-        if (originalItems.isEmpty()) {
-            throw new IllegalArgumentException("해당 스케줄에 아이템이 없습니다.");
-        }
-
-        List<String> contentIds = originalItems.stream().map(ScheduleItem::getContentId).distinct().collect(Collectors.toList());
-        Map<String, Map<String, Double>> locationMap = tourApiClient.getTourLocationMapByContentIds(contentIds);
-        Map<String, TourCategory> tourCategoriesMap = tourApiClient.getTourCategoriesMapByContentIds(contentIds);
-        Map<String, Double> startCoordinates = mapService.getCoordinates(schedule.getStartPlace());
-
-        // [2단계: 지능형 DayNumber 할당 (숙소 규칙 적용)]
-        List<ScheduleItem> accommodations = new LinkedList<>();
-        List<ScheduleItem> others = new LinkedList<>();
-
-        for (ScheduleItem item : originalItems) {
-            if (!locationMap.containsKey(item.getContentId())) continue;
-            TourCategory category = tourCategoriesMap.get(item.getContentId());
-            if (category == TourCategory.ACCOMMODATION) {
-                accommodations.add(item);
-            } else {
-                others.add(item);
-            }
-        }
-
-        long numberOfDays = ChronoUnit.DAYS.between(schedule.getStartDate(), schedule.getEndDate()) + 1;
-        if (numberOfDays <= 0) numberOfDays = 1;
-
-        Map<Integer, List<ScheduleItem>> itemsByDay = new HashMap<>();
-        for (int i = 1; i <= numberOfDays; i++) {
-            itemsByDay.put(i, new ArrayList<>());
-        }
-
-        if (!accommodations.isEmpty()) {
-            itemsByDay.get(1).add(accommodations.get(0));
-            if (numberOfDays > 1 && accommodations.size() > numberOfDays - 2) {
-                itemsByDay.get((int)numberOfDays).add(accommodations.get((int)numberOfDays - 2));
-            }
-            for (int i = 2; i < numberOfDays; i++) {
-                if (accommodations.size() > i - 1) {
-                    itemsByDay.get(i).add(accommodations.get(i - 2));
-                    itemsByDay.get(i).add(accommodations.get(i - 1));
-                }
-            }
-        }
-
-        int dayIndex = 1;
-        for (ScheduleItem item : others) {
-            itemsByDay.get(dayIndex).add(item);
-            dayIndex = (dayIndex % (int)numberOfDays) + 1;
-        }
-
-        // [3단계] GraphHopper 연동: 날짜별 순서(`order`) 최적화
-        List<ScheduleItem> finalNewItems = new ArrayList<>();
-        Set<UUID> processedItemIds = new HashSet<>();
-
-        for (Map.Entry<Integer, List<ScheduleItem>> entry : itemsByDay.entrySet()) {
-            int dayNumber = entry.getKey();
-            List<ScheduleItem> itemsForDay = entry.getValue();
-
-            if (itemsForDay.isEmpty()) continue;
-
-            List<MapRequest.Point> points = new ArrayList<>();
-            if (dayNumber == 1) {
-                points.add(MapRequest.Point.builder()
-                        .contentId("START_PLACE")
-                        .lat(startCoordinates.get("latitude"))
-                        .lon(startCoordinates.get("longitude"))
-                        .build());
-            }
-
-            itemsForDay.forEach(item -> {
-                Map<String, Double> loc = locationMap.get(item.getContentId());
-                if (loc != null && loc.get("latitude") != 0.0) {
-                    points.add(MapRequest.Point.builder()
-                            .contentId(item.getContentId()).lat(loc.get("latitude")).lon(loc.get("longitude")).build());
-                }
-            });
-
-            if (points.size() < 2) {
-                itemsForDay.forEach(item -> {
-                    ScheduleItem.ScheduleItemBuilder builder = ScheduleItem.builder()
-                            .contentId(item.getContentId())
-                            .memo(item.getMemo())
-                            .cost(item.getCost())
-                            .scheduleId(schedule)
-                            .dayNumber(dayNumber)
-                            .order(1);
-
-                    if (processedItemIds.contains(item.getScheduleItemId())) {
-                        builder.scheduleItemId(UUID.randomUUID());
-                    } else {
-                        builder.scheduleItemId(item.getScheduleItemId());
-                        processedItemIds.add(item.getScheduleItemId());
-                    }
-                    finalNewItems.add(builder.build());
-                });
-                continue;
-            }
-
-            MapRequest mapRequest = MapRequest.builder().points(points).build();
-            List<MapResponse> optimizedResult = mapService.findOptimalRoute(mapRequest);
-
-            for (MapResponse res : optimizedResult) {
-                if (res.getContentId().equals("START_PLACE")) continue;
-
-                originalItems.stream()
-                        .filter(item -> item.getContentId().equals(res.getContentId()))
-                        .findFirst()
-                        .ifPresent(originalItem -> {
-                            ScheduleItem.ScheduleItemBuilder builder = ScheduleItem.builder()
-                                    .contentId(originalItem.getContentId())
-                                    .memo(originalItem.getMemo())
-                                    .cost(originalItem.getCost())
-                                    .scheduleId(originalItem.getScheduleId())
-                                    .dayNumber(dayNumber)
-                                    .order(res.getOrder());
-
-                            TourCategory category = tourCategoriesMap.get(originalItem.getContentId());
-                            if (category == TourCategory.ACCOMMODATION || processedItemIds.contains(originalItem.getScheduleItemId())) {
-                                builder.scheduleItemId(UUID.randomUUID());
-                            } else {
-                                builder.scheduleItemId(originalItem.getScheduleItemId());
-                                processedItemIds.add(originalItem.getScheduleItemId());
-                            }
-                            finalNewItems.add(builder.build());
-                        });
-            }
-        }
-
-        // [4단계] DB 저장
-        scheduleItemRepository.deleteAllByScheduleId_ScheduleId(scheduleId);
-        scheduleItemRepository.flush();
-        scheduleItemRepository.saveAll(finalNewItems);
     }
 }
