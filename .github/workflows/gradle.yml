@@ -4,61 +4,64 @@ name: Java CI with Gradle
 
 on:
   push:
-    branches: [ "main" ] # main 브랜치에 푸시될 때 워크플로우 실행
+    branches: [ "main" ]
   pull_request:
-    branches: [ "main" ] # main 브랜치로 풀 리퀘스트가 생성/업데이트될 때 워크플로우 실행
+    branches: [ "main" ]
 
 jobs:
   build:
-    runs-on: ubuntu-latest # 최신 Ubuntu 환경에서 빌드 작업 실행
+    runs-on: ubuntu-latest
     permissions:
-      contents: read # 리포지토리 내용을 읽을 수 있는 권한 부여
+      contents: read
 
     steps:
-    - uses: actions/checkout@v4 # GitHub 리포지토리를 워크플로우 러너로 체크아웃
+    - uses: actions/checkout@v4
     - name: Set up JDK 17
-      uses: actions/setup-java@v4 # JDK 17 설정
+      uses: actions/setup-java@v4
       with:
         java-version: '17'
-        distribution: 'temurin' # Adoptium Temurin 배포판 사용
+        distribution: 'temurin'
+
+    - name: Create map-data directory
+      working-directory: ./Back-end
+      run: mkdir -p map-data
+
+    - name: Download GraphHopper Map Data
+      working-directory: ./Back-end
+      run: curl -L -o map-data/south-korea-latest.osm.pbf https://download.geofabrik.de/asia/south-korea-latest.osm.pbf
 
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v3
 
     - name: Grant execute permission for gradlew
-      # 'gradlew' 파일이 실제 존재하는 하위 디렉토리로 작업 디렉토리를 변경합니다.
       working-directory: ./Back-end
-      run: chmod +x gradlew # gradlew 스크립트에 실행 권한 부여
+      run: chmod +x gradlew
 
     - name: Build with Gradle Wrapper
-      # 'gradlew' 파일이 실제 존재하는 하위 디렉토리로 작업 디렉토리를 변경합니다.
       working-directory: ./Back-end
-      run: ./gradlew build # Gradle Wrapper를 사용하여 프로젝트 빌드
+      run: ./gradlew build
 
-    # 빌드된 JAR 파일을 아티팩트로 업로드합니다.
     - name: Upload JAR artifact
       uses: actions/upload-artifact@v4
       with:
-        name: spring-boot-app # 아티팩트 이름
-        path: ./Back-end/build/libs/*.jar # 빌드된 JAR 파일의 경로
-        retention-days: 1 # 아티팩트 보존 기간 (선택 사항)
+        name: spring-boot-app
+        path: ./Back-end/build/libs/*.jar
+        retention-days: 1
 
   deploy:
-    runs-on: ubuntu-latest # 최신 Ubuntu 환경에서 배포 작업 실행
-    needs: build # 'build' 작업이 성공해야만 이 'deploy' 작업이 실행됩니다.
+    runs-on: ubuntu-latest
+    needs: build
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
-      contents: read # 리포지토리 내용을 읽을 수 있는 권한 부여
+      contents: read
 
     steps:
-      # 1. 빌드 잡에서 업로드한 아티팩트(JAR 파일)를 다운로드합니다.
       - name: Download JAR artifact
         uses: actions/download-artifact@v4
         with:
-          name: spring-boot-app # 업로드했던 아티팩트 이름과 동일
-          path: ./ # 현재 작업 디렉토리(./)로 다운로드
+          name: spring-boot-app
+          path: ./
 
-      # 2. EC2에 배포 디렉토리를 준비하고 권한을 설정합니다.
       - name: Setup directory and permissions on EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -70,7 +73,6 @@ jobs:
             sudo mkdir -p /home/ubuntu/app
             sudo chown -R ${{ secrets.EC2_USERNAME }}:${{ secrets.EC2_USERNAME }} /home/ubuntu/app
 
-      # 3. GitHub Secrets를 사용하여 application.properties 파일 생성
       - name: Create application.properties on EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -79,14 +81,13 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           script: |
-            # EC2 서버에 application.properties 파일을 생성합니다.
             cat <<EOF > /home/ubuntu/app/application.properties
             spring.application.name=back-end
 
             # MySQL
-            spring.datasource.url=jdbc:mysql://10.0.2.83/test_user_db?serverTimezone=Asia/Seoul&useUnicode=true&characterEncoding=UTF-8
+            spring.datasource.url=jdbc:mysql://localhost:3306/main?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&useUnicode=true&connectionCollation=utf8mb4_unicode_ci&useSSL=false&allowPublicKeyRetrieval=true
             spring.datasource.username=root
-            spring.datasource.password=1234
+            spring.datasource.password=7975
             spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
 
             # JPA
@@ -122,7 +123,8 @@ jobs:
             cloudinary.api-key=${{ secrets.CLOUDINARY_API_KEY }}
             cloudinary.api-secret=${{ secrets.CLOUDINARY_API_SECRET }}
 
-            # Kakao OAuth
+            # Kakao OAuth & API
+            kakao.url=${{ secrets.KAKAO_URL }}
             kakao.restApiKey=${{ secrets.KAKAO_REST_API_KEY }}
             kakao.redirectUri=${{ secrets.KAKAO_REDIRECT_URL }}
 
@@ -130,7 +132,7 @@ jobs:
             tour.api.key=${{ secrets.TOUR_API_KEY }}
             tour.api.base-url=http://apis.data.go.kr/B551011/KorService2
 
-            # File Size Limit
+            # Upload Size
             spring.servlet.multipart.max-file-size=10MB
             spring.servlet.multipart.max-request-size=10MB
 
@@ -138,13 +140,11 @@ jobs:
             weather.api.key=${{ secrets.OPENWEATHER_API_KEY }}
             weather.api.url=/data/3.0/onecall
 
-            # OpenAPI
+            # OpenAI
             openai.api.key=${{ secrets.OPENAI_API_KEY }}
             openai.api.url=https://api.openai.com/v1/chat/completions
-            springdoc.swagger-ui.url=http://43.200.227.73:8080/v3/api-docs
             EOF
 
-      # 4. SCP를 사용해 EC2 서버로 JAR 파일을 복사합니다.
       - name: Copy JAR to EC2
         uses: appleboy/scp-action@v0.1.4
         with:
@@ -152,10 +152,9 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
-          source: "*.jar" # 현재 디렉토리의 모든 .jar 파일을 전송
-          target: "/home/ubuntu/app" # EC2의 배포 경로
+          source: "*.jar"
+          target: "/home/ubuntu/app"
 
-      # 5. SSH로 EC2에 접속해 배포 스크립트를 실행합니다.
       - name: Deploy Spring Boot App on EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -164,7 +163,6 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           script: |
-            # Java 17 설치
             echo "☕️ Java 17을 설치하거나 확인합니다..."
             sudo apt-get update
             sudo apt-get install -y openjdk-17-jdk
@@ -175,10 +173,10 @@ jobs:
             echo "🔥 기존 Spring Boot 애플리케이션을 종료합니다 (포트 8080)..."
             PID=$(sudo lsof -t -i:8080)
             if [ -n "$PID" ]; then
-              echo "   PID ${PID}를 종료합니다."
+              echo "    PID ${PID}를 종료합니다."
               sudo kill -9 "$PID"
             else
-              echo "   8080 포트에서 실행 중인 애플리케이션이 없습니다."
+              echo "    8080 포트에서 실행 중인 애플리케이션이 없습니다."
             fi
 
             echo "🔄 새로운 JAR 파일로 교체합니다."
@@ -191,10 +189,8 @@ jobs:
             mv "${NEWEST_JAR}" app.jar
 
             echo "🚀 새로운 Spring Boot 애플리케이션을 시작합니다..."
-            # application.properties가 있으므로 별도 프로파일 지정 없이 실행
             nohup java -jar app.jar > app.log 2>&1 &
 
-            # 애플리케이션이 정상적으로 실행되었는지 확인
             echo "⏱️ 애플리케이션 시작을 10초간 기다립니다..."
             sleep 10
             
