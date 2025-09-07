@@ -41,6 +41,7 @@ public class SecurityConfig {
                                 "/webjars/**",
                                 "/user/register",
                                 "/user/login",
+                                "/user/password",
                                 "/mail/**",
                                 "/health/**",
                                 // 투어 관련 API는 인증 없이 가능
