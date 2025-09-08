@@ -275,4 +275,31 @@ public class RegionService {
      *  ScheduleService에서 코드 쌍을 전달하기 위해 사용할 public record
      */
     public record CodePair(String lDongRegnCd, String lDongSignguCd) {}
+
+
+    /**
+     * 여러 법정동 코드 쌍에 대한 지역 이미지 URL 맵을 일괄 조회합니다. (N+1 문제 해결)
+     * @param codePairs 조회할 lDongRegnCd와 lDongSignguCd 코드 쌍 리스트
+     * @return Key: "lDongRegnCd_lDongSignguCd", Value: "regionImage URL" 형태의 Map
+     */
+    @Transactional(readOnly = true)
+    public Map<String, String> getRegionImagesByCodePairs(List<CodePair> codePairs) {
+        if (codePairs == null || codePairs.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        List<String> concatenatedCodes = codePairs.stream()
+                .map(pair -> pair.lDongRegnCd() + "_" + pair.lDongSignguCd())
+                .collect(Collectors.toList());
+
+        List<Region> foundRegions = regionRepository.findByConcatenatedCodesIn(concatenatedCodes);
+
+        return foundRegions.stream()
+                .filter(region -> region.getRegionImage() != null && !region.getRegionImage().isEmpty())
+                .collect(Collectors.toMap(
+                        region -> region.getLDongRegnCd() + "_" + region.getLDongSignguCd(),
+                        Region::getRegionImage,
+                        (existing, replacement) -> existing
+                ));
+    }
 }

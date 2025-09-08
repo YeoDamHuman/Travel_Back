@@ -115,6 +115,7 @@ public class ScheduleService {
     public void deleteSchedule(UUID scheduleId) {
         UUID currentUserId = getCurrentUserId();
         scheduleFilter.validateScheduleAccess(scheduleId, currentUserId);
+        scheduleItemRepository.deleteAllByScheduleId_ScheduleId(scheduleId);
         scheduleRepository.deleteById(scheduleId);
     }
 
@@ -129,6 +130,8 @@ public class ScheduleService {
         UUID currentUserId = getCurrentUserId();
         User currentUser = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new IllegalStateException("현재 로그인된 사용자를 찾을 수 없습니다."));
+
+        // 1. 사용자의 모든 스케줄을 조회합니다.
         List<Schedule> schedules;
         if (groupId != null) {
             Group groupEntity = scheduleFilter.validateGroupAccess(groupId, currentUserId);
@@ -140,12 +143,57 @@ public class ScheduleService {
             schedules = scheduleRepository.findAllByUserIdAndScheduleType(currentUser, ScheduleType.PERSONAL);
         }
 
+        if (schedules.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 2. (N+1 방지) 모든 스케줄의 첫 번째 아이템을 조회하여 대표 contentId를 찾습니다.
+        List<UUID> scheduleIds = schedules.stream().map(Schedule::getScheduleId).collect(Collectors.toList());
+        List<ScheduleItem> firstItems = scheduleItemRepository.findFirstItemForEachSchedule(scheduleIds);
+
+        Map<UUID, String> scheduleToContentIdMap = firstItems.stream()
+                .collect(Collectors.toMap(
+                        item -> item.getScheduleId().getScheduleId(),
+                        ScheduleItem::getContentId,
+                        (existing, replacement) -> existing
+                ));
+
+        // 3. (N+1 방지) contentId를 이용해 Tour의 법정동 코드를 한 번에 조회합니다.
+        List<String> representativeContentIds = new ArrayList<>(scheduleToContentIdMap.values());
+        Map<String, Map<String, String>> tourExtraInfoMap = tourApiClient.getTourExtraInfoMapByContentIds(representativeContentIds);
+
+        // 4. (N+1 방지) 법정동 코드를 이용해 Region 이미지를 한 번에 조회합니다.
+        List<CodePair> codePairs = tourExtraInfoMap.values().stream()
+                .map(info -> new CodePair(info.get("lDongRegnCd"), info.get("lDongSignguCd")))
+                .filter(pair -> pair.lDongRegnCd() != null && pair.lDongSignguCd() != null)
+                .distinct()
+                .collect(Collectors.toList());
+        Map<String, String> regionImageMap = regionService.getRegionImagesByCodePairs(codePairs);
+
+        // 5. 모든 정보를 조합하여 최종 응답 DTO를 생성합니다.
         return schedules.stream()
                 .map(schedule -> {
+                    // 스케줄의 대표 contentId 찾기
+                    String contentId = scheduleToContentIdMap.get(schedule.getScheduleId());
+                    String regionImage = null;
+
+                    if (contentId != null) {
+                        Map<String, String> extraInfo = tourExtraInfoMap.get(contentId);
+                        if (extraInfo != null) {
+                            String lDongRegnCd = extraInfo.get("lDongRegnCd");
+                            String lDongSignguCd = extraInfo.get("lDongSignguCd");
+                            if (lDongRegnCd != null && lDongSignguCd != null) {
+                                String key = lDongRegnCd + "_" + lDongSignguCd;
+                                regionImage = regionImageMap.get(key);
+                            }
+                        }
+                    }
+
                     UUID responseGroupId = (schedule.getScheduleType() == ScheduleType.GROUP && schedule.getGroupId() != null)
                             ? schedule.getGroupId().getGroupId() : null;
                     String responseGroupName = (schedule.getScheduleType() == ScheduleType.GROUP && schedule.getGroupId() != null)
                             ? schedule.getGroupId().getGroupName() : null;
+
                     return scheduleInfo.builder()
                             .scheduleId(schedule.getScheduleId())
                             .scheduleName(schedule.getScheduleName())
@@ -160,6 +208,7 @@ public class ScheduleService {
                             .scheduleType(schedule.getScheduleType().name())
                             .scheduleStyle(schedule.getScheduleStyle())
                             .isBoarded(schedule.isBoarded())
+                            .regionImage(regionImage) // 최종적으로 이미지 추가
                             .build();
                 })
                 .collect(Collectors.toList());
