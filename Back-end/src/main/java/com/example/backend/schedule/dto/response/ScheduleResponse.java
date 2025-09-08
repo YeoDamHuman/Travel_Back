@@ -70,6 +70,7 @@ public class ScheduleResponse {
         private String scheduleStyle;
         @Schema(description = "일기 작성여부", example = "true")
         private boolean isBoarded;
+        private String regionImage;
     }
 
     /**
