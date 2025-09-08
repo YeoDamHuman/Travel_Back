@@ -261,7 +261,6 @@ public class ScheduleService {
                     String tema = extraInfo.getOrDefault("tema", "");
                     String lDongRegnCd = extraInfo.getOrDefault("lDongRegnCd", "");
                     String lDongSignguCd = extraInfo.getOrDefault("lDongSignguCd", "");
-                    // 1. extraInfo 맵에서 주소 정보를 가져옵니다.
                     String address = extraInfo.getOrDefault("address", "주소 정보 없음");
 
                     String regionKey = lDongRegnCd + "_" + lDongSignguCd;
@@ -283,8 +282,9 @@ public class ScheduleService {
                             .regionName(region)
                             .latitude(latitude)
                             .longitude(longitude)
-                            // 2. 빌더에 주소 정보를 추가합니다.
                             .address(address)
+                            .lDongRegnCd(lDongRegnCd)
+                            .lDongSignguCd(lDongSignguCd)
                             .build();
                 })
                 .collect(Collectors.toList());
