@@ -123,5 +123,11 @@ public class ScheduleResponse {
         private String tema;
         @Schema(description = "지역명", example = "전주")
         private String regionName;
+        @Schema(description = "위도", example = "35.1679171964")
+        private Double latitude;
+        @Schema(description = "경도", example = "129.1273244146")
+        private Double longitude;
+        @Schema(description = "주소", example = "부산광역시 해운대구 수영강변대로 85")
+        private String address;
     }
 }
