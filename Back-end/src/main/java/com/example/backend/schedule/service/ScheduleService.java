@@ -2,7 +2,6 @@ package com.example.backend.schedule.service;
 
 import com.example.backend.cart.entity.Cart;
 import com.example.backend.common.auth.AuthUtil;
-import com.example.backend.region.repository.RegionRepository;
 import com.example.backend.region.service.RegionService;
 import com.example.backend.region.service.RegionService.CodePair;
 import com.example.backend.schedule.dto.request.ScheduleRequest.ScheduleCreateRequest;
@@ -29,7 +28,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.example.backend.region.entity.Region;
+
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -54,7 +53,6 @@ public class ScheduleService {
     private final ObjectMapper objectMapper;
     private final TourApiClient tourApiClient;
     private final RegionService regionService;
-    private final RegionRepository regionRepository;
     /**
      * 새로운 스케줄을 생성하고 스케줄 아이템들을 저장합니다.
      *
@@ -117,6 +115,7 @@ public class ScheduleService {
     public void deleteSchedule(UUID scheduleId) {
         UUID currentUserId = getCurrentUserId();
         scheduleFilter.validateScheduleAccess(scheduleId, currentUserId);
+        scheduleItemRepository.deleteAllByScheduleId_ScheduleId(scheduleId);
         scheduleRepository.deleteById(scheduleId);
     }
 
@@ -131,6 +130,8 @@ public class ScheduleService {
         UUID currentUserId = getCurrentUserId();
         User currentUser = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new IllegalStateException("현재 로그인된 사용자를 찾을 수 없습니다."));
+
+        // 1. 사용자의 모든 스케줄을 조회합니다.
         List<Schedule> schedules;
         if (groupId != null) {
             Group groupEntity = scheduleFilter.validateGroupAccess(groupId, currentUserId);
@@ -142,25 +143,56 @@ public class ScheduleService {
             schedules = scheduleRepository.findAllByUserIdAndScheduleType(currentUser, ScheduleType.PERSONAL);
         }
 
+        if (schedules.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 2. (N+1 방지) 모든 스케줄의 첫 번째 아이템을 조회하여 대표 contentId를 찾습니다.
+        List<UUID> scheduleIds = schedules.stream().map(Schedule::getScheduleId).collect(Collectors.toList());
+        List<ScheduleItem> firstItems = scheduleItemRepository.findFirstItemForEachSchedule(scheduleIds);
+
+        Map<UUID, String> scheduleToContentIdMap = firstItems.stream()
+                .collect(Collectors.toMap(
+                        item -> item.getScheduleId().getScheduleId(),
+                        ScheduleItem::getContentId,
+                        (existing, replacement) -> existing
+                ));
+
+        // 3. (N+1 방지) contentId를 이용해 Tour의 법정동 코드를 한 번에 조회합니다.
+        List<String> representativeContentIds = new ArrayList<>(scheduleToContentIdMap.values());
+        Map<String, Map<String, String>> tourExtraInfoMap = tourApiClient.getTourExtraInfoMapByContentIds(representativeContentIds);
+
+        // 4. (N+1 방지) 법정동 코드를 이용해 Region 이미지를 한 번에 조회합니다.
+        List<CodePair> codePairs = tourExtraInfoMap.values().stream()
+                .map(info -> new CodePair(info.get("lDongRegnCd"), info.get("lDongSignguCd")))
+                .filter(pair -> pair.lDongRegnCd() != null && pair.lDongSignguCd() != null)
+                .distinct()
+                .collect(Collectors.toList());
+        Map<String, String> regionImageMap = regionService.getRegionImagesByCodePairs(codePairs);
+
+        // 5. 모든 정보를 조합하여 최종 응답 DTO를 생성합니다.
         return schedules.stream()
                 .map(schedule -> {
+                    // 스케줄의 대표 contentId 찾기
+                    String contentId = scheduleToContentIdMap.get(schedule.getScheduleId());
+                    String regionImage = null;
+
+                    if (contentId != null) {
+                        Map<String, String> extraInfo = tourExtraInfoMap.get(contentId);
+                        if (extraInfo != null) {
+                            String lDongRegnCd = extraInfo.get("lDongRegnCd");
+                            String lDongSignguCd = extraInfo.get("lDongSignguCd");
+                            if (lDongRegnCd != null && lDongSignguCd != null) {
+                                String key = lDongRegnCd + "_" + lDongSignguCd;
+                                regionImage = regionImageMap.get(key);
+                            }
+                        }
+                    }
+
                     UUID responseGroupId = (schedule.getScheduleType() == ScheduleType.GROUP && schedule.getGroupId() != null)
                             ? schedule.getGroupId().getGroupId() : null;
                     String responseGroupName = (schedule.getScheduleType() == ScheduleType.GROUP && schedule.getGroupId() != null)
                             ? schedule.getGroupId().getGroupName() : null;
-
-                    // regionImage 가져오기
-                    String regionImage = null;
-                    String lDongRegnCd = schedule.getCartId().getLDongRegnCd();
-                    String lDongSignguCd = schedule.getCartId().getLDongSignguCd();
-
-                    if (lDongRegnCd != null && lDongSignguCd != null) {
-                        regionImage = regionRepository.findByLDongRegnCdAndLDongSignguCd(lDongRegnCd, lDongSignguCd)
-                                .stream()
-                                .findFirst()
-                                .map(Region::getRegionImage)
-                                .orElse(null);
-                    }
 
                     return scheduleInfo.builder()
                             .scheduleId(schedule.getScheduleId())
@@ -176,7 +208,7 @@ public class ScheduleService {
                             .scheduleType(schedule.getScheduleType().name())
                             .scheduleStyle(schedule.getScheduleStyle())
                             .isBoarded(schedule.isBoarded())
-                            .regionImage(regionImage)
+                            .regionImage(regionImage) // 최종적으로 이미지 추가
                             .build();
                 })
                 .collect(Collectors.toList());
