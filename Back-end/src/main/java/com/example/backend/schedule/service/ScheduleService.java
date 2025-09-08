@@ -29,7 +29,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.example.backend.region.entity.Region;
-
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -149,12 +148,14 @@ public class ScheduleService {
                     String responseGroupName = (schedule.getScheduleType() == ScheduleType.GROUP && schedule.getGroupId() != null)
                             ? schedule.getGroupId().getGroupName() : null;
 
+                    // regionImage 가져오기
                     String regionImage = null;
-                    if (schedule.getCartId() != null) {
-                        regionImage = regionRepository.findByLDongRegnCdAndLDongSignguCd(
-                                        schedule.getCartId().getLDongRegnCd(),
-                                        schedule.getCartId().getLDongSignguCd()
-                                ).stream()
+                    String lDongRegnCd = schedule.getCartId().getLDongRegnCd();
+                    String lDongSignguCd = schedule.getCartId().getLDongSignguCd();
+
+                    if (lDongRegnCd != null && lDongSignguCd != null) {
+                        regionImage = regionRepository.findByLDongRegnCdAndLDongSignguCd(lDongRegnCd, lDongSignguCd)
+                                .stream()
                                 .findFirst()
                                 .map(Region::getRegionImage)
                                 .orElse(null);
@@ -174,6 +175,7 @@ public class ScheduleService {
                             .scheduleType(schedule.getScheduleType().name())
                             .scheduleStyle(schedule.getScheduleStyle())
                             .isBoarded(schedule.isBoarded())
+                            .regionImage(regionImage)
                             .build();
                 })
                 .collect(Collectors.toList());
