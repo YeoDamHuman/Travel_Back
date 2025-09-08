@@ -92,10 +92,12 @@ public class BoardService {
     }
 
     //상세 조회
-    @Transactional(readOnly = true)
+    @Transactional
     public BoardDetailResponseDto getBoardDetail(UUID boardId) {
         Board board = boardRepository.findById(boardId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 게시글입니다."));
+
+        board.increaseCount();
 
         List<String> images = board.getImages().stream()
                 .map(BoardImage::getImgUrl)

@@ -78,8 +78,8 @@ public class Board {
         this.updatedAt = LocalDateTime.now();
     }
 
-    public void updateCount(int newCount) {
-        this.count = newCount;
+    public void increaseCount() {
+        this.count++;
     }
 
     public void setBoardReport(int boardReport) {
