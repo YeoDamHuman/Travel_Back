@@ -2,6 +2,7 @@ package com.example.backend.schedule.service;
 
 import com.example.backend.cart.entity.Cart;
 import com.example.backend.common.auth.AuthUtil;
+import com.example.backend.region.repository.RegionRepository;
 import com.example.backend.region.service.RegionService;
 import com.example.backend.schedule.dto.request.ScheduleRequest.ScheduleCreateRequest;
 import com.example.backend.schedule.dto.request.ScheduleRequest.ScheduleUpdateRequest;
@@ -27,6 +28,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.example.backend.region.entity.Region;
 
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -52,6 +54,7 @@ public class ScheduleService {
     private final ObjectMapper objectMapper;
     private final TourApiClient tourApiClient;
     private final RegionService regionService;
+    private final RegionRepository regionRepository;
     /**
      * 새로운 스케줄을 생성하고 스케줄 아이템들을 저장합니다.
      *
@@ -145,6 +148,18 @@ public class ScheduleService {
                             ? schedule.getGroupId().getGroupId() : null;
                     String responseGroupName = (schedule.getScheduleType() == ScheduleType.GROUP && schedule.getGroupId() != null)
                             ? schedule.getGroupId().getGroupName() : null;
+
+                    String regionImage = null;
+                    if (schedule.getCartId() != null) {
+                        regionImage = regionRepository.findByLDongRegnCdAndLDongSignguCd(
+                                        schedule.getCartId().getLDongRegnCd(),
+                                        schedule.getCartId().getLDongSignguCd()
+                                ).stream()
+                                .findFirst()
+                                .map(Region::getRegionImage)
+                                .orElse(null);
+                    }
+
                     return scheduleInfo.builder()
                             .scheduleId(schedule.getScheduleId())
                             .scheduleName(schedule.getScheduleName())
