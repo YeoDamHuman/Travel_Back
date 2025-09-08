@@ -131,5 +131,9 @@ public class ScheduleResponse {
         private Double longitude;
         @Schema(description = "주소", example = "부산광역시 해운대구 수영강변대로 85")
         private String address;
+        @Schema(description = "리전코드", example = "11")
+        private String lDongRegnCd;
+        @Schema(description = "시군구코드", example = "110")
+        private String lDongSignguCd;
     }
 }
