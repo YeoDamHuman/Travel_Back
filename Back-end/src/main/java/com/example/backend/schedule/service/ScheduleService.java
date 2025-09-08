@@ -4,6 +4,7 @@ import com.example.backend.cart.entity.Cart;
 import com.example.backend.common.auth.AuthUtil;
 import com.example.backend.region.repository.RegionRepository;
 import com.example.backend.region.service.RegionService;
+import com.example.backend.region.service.RegionService.CodePair;
 import com.example.backend.schedule.dto.request.ScheduleRequest.ScheduleCreateRequest;
 import com.example.backend.schedule.dto.request.ScheduleRequest.ScheduleUpdateRequest;
 import com.example.backend.schedule.dto.response.ScheduleResponse.scheduleDetailResponse;
@@ -203,11 +204,13 @@ public class ScheduleService {
                 .distinct()
                 .collect(Collectors.toList());
 
+        // API 클라이언트를 통해 필요한 모든 정보를 한 번에 가져옵니다.
         Map<String, String> tourTitlesMap = tourApiClient.getTourTitlesMapByContentIds(contentIds);
         Map<String, Map<String, String>> tourExtraInfoMap = tourApiClient.getTourExtraInfoMapByContentIds(contentIds);
+        Map<String, Map<String, Double>> tourLocationMap = tourApiClient.getTourLocationMapByContentIds(contentIds);
 
-        List<RegionService.CodePair> codePairsToSearch = tourExtraInfoMap.values().stream()
-                .map(info -> new RegionService.CodePair(
+        List<CodePair> codePairsToSearch = tourExtraInfoMap.values().stream()
+                .map(info -> new CodePair(
                         info.get("lDongRegnCd"),
                         info.get("lDongSignguCd")
                 ))
@@ -226,9 +229,15 @@ public class ScheduleService {
                     String tema = extraInfo.getOrDefault("tema", "");
                     String lDongRegnCd = extraInfo.getOrDefault("lDongRegnCd", "");
                     String lDongSignguCd = extraInfo.getOrDefault("lDongSignguCd", "");
+                    // 1. extraInfo 맵에서 주소 정보를 가져옵니다.
+                    String address = extraInfo.getOrDefault("address", "주소 정보 없음");
 
                     String regionKey = lDongRegnCd + "_" + lDongSignguCd;
                     String region = regionNameMap.getOrDefault(regionKey, "");
+
+                    Map<String, Double> location = tourLocationMap.getOrDefault(contentId, Collections.emptyMap());
+                    Double latitude = location.get("latitude");
+                    Double longitude = location.get("longitude");
 
                     return scheduleItemInfo.builder()
                             .scheduleItemId(item.getScheduleItemId())
@@ -240,6 +249,10 @@ public class ScheduleService {
                             .order(item.getOrder())
                             .tema(tema)
                             .regionName(region)
+                            .latitude(latitude)
+                            .longitude(longitude)
+                            // 2. 빌더에 주소 정보를 추가합니다.
+                            .address(address)
                             .build();
                 })
                 .collect(Collectors.toList());

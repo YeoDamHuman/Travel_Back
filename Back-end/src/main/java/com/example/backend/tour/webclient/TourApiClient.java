@@ -877,6 +877,7 @@ public class TourApiClient {
                             extraInfo.put("tema", tour.getTema() != null ? tour.getTema() : "");
                             extraInfo.put("lDongRegnCd", tour.getLDongRegnCd() != null ? tour.getLDongRegnCd() : "");
                             extraInfo.put("lDongSignguCd", tour.getLDongSignguCd() != null ? tour.getLDongSignguCd() : "");
+                            extraInfo.put("address", tour.getAddress() != null ? tour.getAddress() : "");
                             return extraInfo;
                         },
                         (existingValue, newValue) -> existingValue // 중복 키 발생 시 기존 값을 사용
