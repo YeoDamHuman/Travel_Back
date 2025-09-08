@@ -6,7 +6,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import java.time.LocalTime;
 import java.util.UUID;
 
 /**
@@ -22,7 +21,7 @@ public class ScheduleItemRequest {
     @AllArgsConstructor
     @NoArgsConstructor
     public static class ScheduleItemCreateRequest {
-        @Schema(description = "장소 ID", example = "123e4567-e89b-12d3-a456-426614174000")
+        @Schema(description = "장소 ID", example = "126108")
         private String contentId;
         @Schema(description = "일정의 며칠째인지 (1일부터 시작)", example = "2")
         private Integer dayNumber;
@@ -60,7 +59,7 @@ public class ScheduleItemRequest {
     @AllArgsConstructor
     @NoArgsConstructor
     public static class ScheduleItemUpdateRequest {
-        @Schema(description = "스케쥴 아이템 ID", example = "123e4567-e89b-12d3-a456-426614174000")
+        @Schema(description = "스케쥴 아이템 ID", example = "126108")
         private UUID scheduleItemId;
         @Schema(description = "스케쥴 ID", example = "123e4567-e89b-12d3-a456-426614174000")
         private UUID scheduleId;
