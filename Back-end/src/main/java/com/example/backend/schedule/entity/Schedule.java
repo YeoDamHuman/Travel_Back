@@ -46,9 +46,6 @@ public class Schedule {
     @Column(name = "budget", nullable = false)
     private BigInteger budget;
 
-    @Column(name = "scheduleStyle", nullable = false)
-    private String scheduleStyle;
-
     @Column(name = "startPlace", nullable = false)
     private String startPlace;
 

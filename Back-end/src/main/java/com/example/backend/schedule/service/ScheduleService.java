@@ -28,8 +28,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -206,7 +204,6 @@ public class ScheduleService {
                             .groupName(responseGroupName)
                             .userId(schedule.getUserId().getUserId())
                             .scheduleType(schedule.getScheduleType().name())
-                            .scheduleStyle(schedule.getScheduleStyle())
                             .isBoarded(schedule.isBoarded())
                             .regionImage(regionImage) // 최종적으로 이미지 추가
                             .build();

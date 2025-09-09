@@ -2,11 +2,9 @@ package com.example.backend.schedule.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
-
 import java.math.BigInteger;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -66,8 +64,6 @@ public class ScheduleResponse {
         private UUID userId;
         @Schema(description = "스케줄 타입", example = "GROUP")
         private String scheduleType;
-        @Schema(description = "스케쥴 스타일", example = "휴양")
-        private String scheduleStyle;
         @Schema(description = "일기 작성여부", example = "true")
         private boolean isBoarded;
         @Schema(description = "지역 이미지", example = "https://example.com/images/default.jpg")
