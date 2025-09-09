@@ -1,7 +1,6 @@
 package com.example.backend.schedule.controller;
 
 import com.example.backend.schedule.dto.request.ScheduleRequest.ScheduleCreateRequest;
-import com.example.backend.schedule.dto.request.ScheduleRequest.ScheduleDeleteRequest;
 import com.example.backend.schedule.dto.request.ScheduleRequest.ScheduleUpdateRequest;
 import com.example.backend.schedule.dto.response.ScheduleResponse;
 import com.example.backend.schedule.dto.response.ScheduleResponse.scheduleCreateResponse;
@@ -33,7 +32,7 @@ public class ScheduleController {
     /**
      * 새로운 스케줄을 생성합니다.
      * <p>
-     * 이 엔드포인트는 요청 본문에 제공된 정보를 바탕으로 개인 또는 그룹 스케줄을 생성합니다.
+     * 이 엔드포인트는 요청 본문에 제공된 정보를 바탕으로 개인 스케줄을 생성합니다.
      *
      * @param request 스케줄 상세 정보가 담긴 {@link ScheduleCreateRequest} 객체.
      * @return 새로 생성된 스케줄의 ID를 포함하는 {@link scheduleCreateResponse} 객체를 담은 {@link ResponseEntity}.
@@ -73,31 +72,29 @@ public class ScheduleController {
      * <p>
      * 이 엔드포인트는 시스템에서 스케줄을 영구적으로 삭제합니다.
      *
-     * @param request 삭제할 스케줄의 ID가 담긴 {@link ScheduleDeleteRequest} 객체.
+     * @param scheduleId 삭제할 스케줄의 ID.
      * @return 성공적인 삭제를 의미하는 내용 없는 {@link ResponseEntity}.
      */
-    @DeleteMapping("/delete")
+    @DeleteMapping("/{scheduleId}")
     @Operation(summary = "스케쥴 삭제", description = "스케쥴을 삭제하는 API.")
-    public ResponseEntity<?> delete(
-            @RequestBody ScheduleDeleteRequest request) {
-        scheduleService.deleteSchedule(request.getScheduleId());
+    public ResponseEntity<Void> delete(
+            @Parameter(description = "삭제할 스케쥴 ID", example = "a3f12c9b-4567-4d89-9a12-c3b4d6a7f123")
+            @PathVariable UUID scheduleId) {
+        scheduleService.deleteSchedule(scheduleId);
         return ResponseEntity.noContent().build();
     }
 
     /**
-     * 스케줄 목록을 조회합니다.
+     * 현재 사용자의 스케줄 목록을 조회합니다.
      * <p>
-     * 이 엔드포인트는 그룹 ID가 제공되지 않으면 개인 스케줄을, 그룹 ID가 제공되면 해당 그룹의 스케줄을 가져옵니다.
+     * 이 엔드포인트는 현재 로그인한 사용자의 모든 개인 스케줄 목록을 가져옵니다.
      *
-     * @param groupId 그룹의 ID. 선택적 매개변수입니다. null일 경우 개인 스케줄이 반환됩니다.
      * @return {@link scheduleInfo} 객체들의 목록을 담은 {@link ResponseEntity}.
      */
-    @GetMapping({"", "/{groupId}"})
-    @Operation(summary = "스케쥴 목록 조회", description = "개인 또는 그룹 스케쥴 목록을 조회하는 API.")
-    public ResponseEntity<List<scheduleInfo>> getSchedules(
-            @Parameter(description = "그룹 ID (선택적)", example = "a3f12c9b-4567-4d89-9a12-c3b4d6a7f123")
-            @PathVariable(required = false) UUID groupId) {
-        List<scheduleInfo> schedules = scheduleService.getSchedules(groupId);
+    @GetMapping
+    @Operation(summary = "내 스케쥴 목록 조회", description = "현재 로그인한 사용자의 스케쥴 목록을 조회하는 API.")
+    public ResponseEntity<List<scheduleInfo>> getSchedules() {
+        List<scheduleInfo> schedules = scheduleService.getSchedules();
         return ResponseEntity.ok(schedules);
     }
 
@@ -109,9 +106,9 @@ public class ScheduleController {
      * @param scheduleId 조회할 스케줄의 ID.
      * @return 상세 스케줄 정보가 담긴 {@link ScheduleResponse.scheduleDetailResponse} 객체를 담은 {@link ResponseEntity}.
      */
-    @GetMapping("details/{scheduleId}")
+    @GetMapping("/details/{scheduleId}")
     @Operation(summary = "스케쥴 상세 조회", description = "스케쥴 상세 정보를 조회하는 API.")
-    public ResponseEntity<ScheduleResponse.scheduleDetailResponse> getSchedule(
+    public ResponseEntity<ScheduleResponse.scheduleDetailResponse> getScheduleDetail(
             @Parameter(description = "스케쥴 ID", example = "b4e8f9a0-1234-4c56-8d7e-9f12345b6789")
             @PathVariable UUID scheduleId) {
         ScheduleResponse.scheduleDetailResponse schedule = scheduleService.getScheduleDetail(scheduleId);
@@ -128,11 +125,44 @@ public class ScheduleController {
      */
     @PostMapping("/optimize/{scheduleId}")
     @Operation(summary = "최적 동선", description = "스케쥴 최적 동선을 위해 gpt 사용하는 API.")
-    public ResponseEntity<?> optimizeSchedule(
+    public ResponseEntity<Void> optimizeSchedule(
             @Parameter(description = "스케쥴 ID", example = "b4e8f9a0-1234-4c56-8d7e-9f12345b6789")
             @PathVariable UUID scheduleId) {
         scheduleService.optimizeRoute(scheduleId);
         return ResponseEntity.ok().build();
     }
 
+    /**
+     * 특정 스케줄의 상세 정보를 공개적으로 조회합니다.
+     * <p>
+     * 이 엔드포인트는 인증 없이 스케줄 ID만으로 상세 정보를 조회할 수 있습니다.
+     *
+     * @param scheduleId 조회할 스케줄의 ID.
+     * @return 상세 스케줄 정보가 담긴 {@link ScheduleResponse.scheduleDetailResponse} 객체를 담은 {@link ResponseEntity}.
+     */
+    @GetMapping("/public/{scheduleId}")
+    @Operation(summary = "공개 스케쥴 상세 조회", description = "로그인 없이 스케쥴 상세 정보를 조회하는 API.")
+    public ResponseEntity<ScheduleResponse.scheduleDetailResponse> getPublicScheduleDetail(
+            @Parameter(description = "스케쥴 ID", example = "b4e8f9a0-1234-4c56-8d7e-9f12345b6789")
+            @PathVariable UUID scheduleId) {
+        ScheduleResponse.scheduleDetailResponse schedule = scheduleService.getPublicScheduleDetail(scheduleId);
+        return ResponseEntity.ok(schedule);
+    }
+
+    /**
+     * 특정 스케줄에 현재 사용자를 참여자로 추가합니다. (초대 수락)
+     * <p>
+     * 이 엔드포인트는 초대 링크를 통해 접근하는 등, 사용자가 스케줄에 참여 의사를 밝혔을 때 사용됩니다.
+     *
+     * @param scheduleId 참여할 스케줄의 ID.
+     * @return 성공적인 참여를 의미하는 OK 상태의 {@link ResponseEntity}.
+     */
+    @PostMapping("/{scheduleId}/join")
+    @Operation(summary = "스케쥴에 참여 (초대 수락)", description = "현재 로그인한 사용자를 특정 스케줄의 참여자로 추가합니다.")
+    public ResponseEntity<Void> joinSchedule(
+            @Parameter(description = "참여할 스케쥴 ID", example = "b4e8f9a0-1234-4c56-8d7e-9f12345b6789")
+            @PathVariable UUID scheduleId) {
+        scheduleService.joinSchedule(scheduleId);
+        return ResponseEntity.ok().build();
+    }
 }

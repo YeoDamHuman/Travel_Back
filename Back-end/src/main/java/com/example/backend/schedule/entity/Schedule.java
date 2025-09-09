@@ -1,7 +1,4 @@
 package com.example.backend.schedule.entity;
-
-import com.example.backend.cart.entity.Cart;
-import com.example.backend.group.entity.Group;
 import com.example.backend.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
@@ -11,6 +8,8 @@ import java.math.BigInteger;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -59,24 +58,16 @@ public class Schedule {
     @Column(name = "is_boarded", nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE")
     private boolean isBoarded = false;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "group_id", nullable = true)
-    private Group groupId;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User userId;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "schedule_type", nullable = false)
-    private ScheduleType scheduleType;
-
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "cart_id", referencedColumnName = "cart_id", nullable = false)
-    private Cart cartId;
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "schedule_member",
+            joinColumns = @JoinColumn(name = "schedule_id"),
+            inverseJoinColumns = @JoinColumn(name = "user_id")
+    )
+    @Builder.Default
+    private Set<User> users = new HashSet<>();
 
     public void setIsBoarded(boolean isBoarded) {
         this.isBoarded = isBoarded;
     }
 }
-

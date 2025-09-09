@@ -1,11 +1,14 @@
 package com.example.backend.user.entity;
 import com.example.backend.cart.entity.Cart;
+import com.example.backend.schedule.entity.Schedule; // ✅ Schedule 엔티티 import 추가
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
+import java.util.HashSet; // ✅ HashSet import 추가
 import java.util.List;
+import java.util.Set; // ✅ Set import 추가
 import java.util.UUID;
 
 @Entity
@@ -26,7 +29,7 @@ public class User {
 
     @Column(name = "password", length = 100, nullable = true)
     private String password;
-    
+
     @Column(name = "user_name", length = 40, nullable = false)
     private String userName;
 
@@ -46,17 +49,21 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "user_role", length = 20, nullable = false)
-    private Role userRole = Role.USER;  // 기본값 USER로 설정
+    private Role userRole = Role.USER;
 
     @OneToMany(mappedBy = "userId")
     private List<Cart> carts;
+
+    @ManyToMany(mappedBy = "users")
+    @Builder.Default
+    private Set<Schedule> schedules = new HashSet<>();
+
 
     public enum Role {
         USER,
         ADMIN
     }
 
-    // ✅ 기타 필드 업데이트 메서드
     public void updateUserInfo(String email, String userName, String userNickname, String userProfileImage) {
         if (email != null) {
             this.email = email;
@@ -64,20 +71,15 @@ public class User {
         if (userName != null) {
             this.userName = userName;
         }
-
         if (userNickname != null) {
             this.userNickname = userNickname;
         }
-
         if (userProfileImage != null) {
             this.userProfileImage = userProfileImage;
         }
     }
 
-    // ✅ 비밀번호만 변경하는 메서드
     public void setPassword(String password) {
         this.password = password;
     }
 }
-
-

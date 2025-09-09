@@ -6,6 +6,7 @@ import java.math.BigInteger;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -56,20 +57,14 @@ public class ScheduleResponse {
         private LocalDateTime updatedAt;
         @Schema(description = "예산 (단위: 원)", example = "1500000")
         private BigInteger budget;
-        @Schema(description = "그룹 ID (그룹 스케줄인 경우)", example = "a3f12c9b-4567-4d89-9a12-c3b4d6a7f123")
-        private UUID groupId;
-        @Schema(description = "그룹 이름", example = "친구 여행 그룹")
-        private String groupName;
-        @Schema(description = "스케줄 생성자 사용자 ID", example = "4f8e123b-9876-4cde-b123-6f7890e12345")
-        private UUID userId;
-        @Schema(description = "스케줄 타입", example = "GROUP")
-        private String scheduleType;
         @Schema(description = "일기 작성여부", example = "true")
         private boolean isBoarded;
         @Schema(description = "스케쥴 스타일", example = "휴양")
         private String scheduleStyle;
         @Schema(description = "지역 이미지", example = "https://example.com/images/default.jpg")
         private String regionImage;
+        @Schema(description = "스케줄에 참여한 사용자 목록")
+        private Set<scheduleUser> users;
     }
 
     /**
@@ -95,8 +90,22 @@ public class ScheduleResponse {
         private BigInteger budget;
         @Schema(description = "스케줄에 포함된 아이템 목록")
         private List<scheduleItemInfo> scheduleItems;
-
+        @Schema(description = "스케줄에 참여한 사용자 목록")
+        private Set<scheduleUser> users;
     }
+
+    /**
+     * 스케줄에 참여한 사용자의 기본 정보를 담는 DTO입니다.
+     */
+    @Getter
+    @Builder
+    @AllArgsConstructor
+    public static class scheduleUser {
+        private UUID userId;
+        private String userName;
+        private String userProfileImage;
+    }
+
 
     /**
      * 스케줄에 포함된 개별 아이템의 상세 정보 DTO입니다.

@@ -38,7 +38,7 @@ public class UserController {
     }
 
     @DeleteMapping("/delete")
-    @Operation(summary = "유저 삭제", description = "로컬 유저 정보 수정 API")
+    @Operation(summary = "유저 삭제", description = "로컬 유저 탈퇴 API")
     public ResponseEntity<Void> delete() {
         userService.delete();
         return ResponseEntity.noContent().build();
