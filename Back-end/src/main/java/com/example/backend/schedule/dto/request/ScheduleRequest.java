@@ -1,10 +1,5 @@
 package com.example.backend.schedule.dto.request;
-
-import com.example.backend.cart.entity.Cart;
-import com.example.backend.group.entity.Group;
 import com.example.backend.schedule.entity.Schedule;
-import com.example.backend.schedule.entity.ScheduleType;
-import com.example.backend.user.entity.User;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -29,37 +24,24 @@ public class ScheduleRequest {
         private LocalDate endDate;
         @Schema(description = "예산 (단위: 원)", example = "1500000")
         private BigInteger budget;
-        @Schema(description = "그룹 ID (그룹 스케줄인 경우 필수, 개인 스케줄인 경우 null)", example = "a3f12c9b-4567-4d89-9a12-c3b4d6a7f123")
-        private UUID groupId;
-        @Schema(description = "스케줄 타입 (PERSONAL, GROUP 중 하나)", example = "GROUP")
-        private ScheduleType scheduleType;
         @Schema(description = "출발 장소", example = "서울역")
         private String startPlace;
         @Schema(description = "출발 시간", example = "09:00")
         private LocalTime startTime;
-        @Schema(description = "카트 ID", example = "a3f12c9b-4567-4d89-9a12-c3b4d6a7f123")
-        private UUID cartId;
         @Schema(description = "스케줄 스타일 (여행 목적 등)", example = "쇼핑")
         private String scheduleStyle;
         @Schema(description = "일정 아이템 목록")
         private List<Items> scheduleItem;
 
-        public static Schedule toEntity(ScheduleCreateRequest request, Group group, User user, Cart cart) {
+        public static Schedule toEntity(ScheduleCreateRequest request) {
             return Schedule.builder()
-                    .scheduleId(null)
                     .scheduleName(request.getScheduleName())
                     .startDate(request.startDate)
                     .endDate(request.endDate)
-                    .createdAt(null)
-                    .updatedAt(null)
                     .budget(request.budget)
-                    .groupId(group)
-                    .userId(user)
-                    .scheduleType(request.scheduleType)
-                    .cartId(cart)
+                    .startPlace(request.startPlace)
                     .startTime(request.startTime)
                     .scheduleStyle(request.scheduleStyle)
-                    .startPlace(request.startPlace)
                     .build();
         }
 
@@ -88,37 +70,27 @@ public class ScheduleRequest {
         private LocalDate endDate;
         @Schema(description = "예산 (단위: 원)", example = "1500000")
         private BigInteger budget;
-        @Schema(description = "그룹 ID (그룹 스케줄인 경우 필수, 개인 스케줄인 경우 null)", example = "a3f12c9b-4567-4d89-9a12-c3b4d6a7f123")
-        private UUID groupId;
         @Schema(description = "시작 장소", example = "서울역")
         private String startPlace;
-        @Schema(description = "스케줄 타입 (PERSONAL, GROUP 중 하나)", example = "GROUP")
-        private ScheduleType scheduleType;
 
-        public static Schedule toEntity(ScheduleUpdateRequest request, Schedule schedule, Group group) {
+        /**
+         * 요청 데이터(request)와 원본 데이터(originalSchedule)를 조합하여
+         * 업데이트를 위한 새로운 Schedule 엔티티를 생성합니다.
+         */
+        public static Schedule toEntity(ScheduleUpdateRequest request, Schedule originalSchedule) {
             return Schedule.builder()
-                    .scheduleId(schedule.getScheduleId())
-                    .budget(request.budget)
-                    .createdAt(schedule.getCreatedAt())
-                    .endDate(request.getEndDate())
+                    .scheduleId(originalSchedule.getScheduleId()) // ID는 원본에서
                     .scheduleName(request.getScheduleName())
-                    .scheduleType(request.getScheduleType())
                     .startDate(request.getStartDate())
-                    .cartId(schedule.getCartId())
-                    .userId(schedule.getUserId())
+                    .endDate(request.getEndDate())
+                    .budget(request.getBudget())
                     .startPlace(request.getStartPlace())
-                    .scheduleStyle(schedule.getScheduleStyle())
-                    .groupId(group)
+                    .createdAt(originalSchedule.getCreatedAt()) // 생성일은 원본에서
+                    .scheduleStyle(originalSchedule.getScheduleStyle()) // 스타일은 원본에서 (DTO에 없으므로)
+                    .startTime(originalSchedule.getStartTime()) // 시작 시간은 원본에서 (DTO에 없으므로)
+                    .isBoarded(originalSchedule.isBoarded()) // 일기 여부는 원본에서
+                    .users(originalSchedule.getUsers()) // ⭐️ 중요: 기존 참여자 정보가 유실되지 않도록 반드시 복사해야 합니다.
                     .build();
         }
     }
-
-    @Getter
-    @Builder
-    @AllArgsConstructor
-    public static class ScheduleDeleteRequest {
-        @Schema(description = "스케쥴 아이디", example = "123e4567-e89b-12d3-a456-426614174000")
-        private UUID scheduleId;
-    }
-
 }

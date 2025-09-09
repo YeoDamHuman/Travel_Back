@@ -41,6 +41,7 @@ public class SecurityConfig {
                                 "/webjars/**",
                                 "/user/register",
                                 "/user/login",
+                                "/schedule/public/**",
                                 "/user/password",
                                 "/mail/**",
                                 "/health/**",
