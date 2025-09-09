@@ -204,6 +204,7 @@ public class ScheduleService {
                             .groupName(responseGroupName)
                             .userId(schedule.getUserId().getUserId())
                             .scheduleType(schedule.getScheduleType().name())
+                            .scheduleStyle(schedule.getScheduleStyle())
                             .isBoarded(schedule.isBoarded())
                             .regionImage(regionImage) // 최종적으로 이미지 추가
                             .build();

@@ -66,6 +66,8 @@ public class ScheduleResponse {
         private String scheduleType;
         @Schema(description = "일기 작성여부", example = "true")
         private boolean isBoarded;
+        @Schema(description = "스케쥴 스타일", example = "휴양")
+        private String scheduleStyle;
         @Schema(description = "지역 이미지", example = "https://example.com/images/default.jpg")
         private String regionImage;
     }

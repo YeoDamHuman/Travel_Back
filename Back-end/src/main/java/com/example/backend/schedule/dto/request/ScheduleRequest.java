@@ -39,6 +39,8 @@ public class ScheduleRequest {
         private LocalTime startTime;
         @Schema(description = "카트 ID", example = "a3f12c9b-4567-4d89-9a12-c3b4d6a7f123")
         private UUID cartId;
+        @Schema(description = "스케줄 스타일 (여행 목적 등)", example = "쇼핑")
+        private String scheduleStyle;
         @Schema(description = "일정 아이템 목록")
         private List<Items> scheduleItem;
 
@@ -56,6 +58,7 @@ public class ScheduleRequest {
                     .scheduleType(request.scheduleType)
                     .cartId(cart)
                     .startTime(request.startTime)
+                    .scheduleStyle(request.scheduleStyle)
                     .startPlace(request.startPlace)
                     .build();
         }

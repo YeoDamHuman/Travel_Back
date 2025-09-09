@@ -49,6 +49,9 @@ public class Schedule {
     @Column(name = "startPlace", nullable = false)
     private String startPlace;
 
+    @Column(name = "scheduleStyle", nullable = false)
+    private String scheduleStyle;
+
     @Column(name = "startTime", nullable = false)
     private LocalTime startTime;
 
