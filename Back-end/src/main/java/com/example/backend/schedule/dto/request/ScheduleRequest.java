@@ -107,6 +107,7 @@ public class ScheduleRequest {
                     .cartId(schedule.getCartId())
                     .userId(schedule.getUserId())
                     .startPlace(request.getStartPlace())
+                    .scheduleStyle(schedule.getScheduleStyle())
                     .groupId(group)
                     .build();
         }
