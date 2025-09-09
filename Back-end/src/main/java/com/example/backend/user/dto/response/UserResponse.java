@@ -50,4 +50,12 @@ public class UserResponse {
         @Schema(description = "프로필 이미지 URL", example = "https://example.com/images/profile/abcd.jpg")
         private String userProfileImage;
     }
+
+    @Getter
+    @Builder
+    @AllArgsConstructor
+    public static class deleteResponse {
+        @Schema(description = "회원 탈퇴 결과 메시지", example = "회원 탈퇴가 완료되었습니다.")
+        private String message;
+    }
 }

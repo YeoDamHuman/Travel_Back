@@ -1,9 +1,18 @@
 package com.example.backend.user.service;
 
+import com.example.backend.board.entity.Board;
+import com.example.backend.board.repository.BoardRepository;
 import com.example.backend.cart.entity.Cart;
 import com.example.backend.cart.repository.CartRepository;
+import com.example.backend.comment.entity.Comment;
+import com.example.backend.comment.repository.CommentRepository;
+import com.example.backend.favorite.entity.Favorite;
+import com.example.backend.favorite.repository.FavoriteRepository;
 import com.example.backend.jwt.config.JWTGenerator;
 import com.example.backend.jwt.dto.JwtDto;
+import com.example.backend.schedule.entity.Schedule;
+import com.example.backend.schedule.repository.ScheduleRepository;
+import com.example.backend.tour.repository.TourRepository;
 import com.example.backend.user.dto.request.UserRequest;
 import com.example.backend.user.dto.request.UserRequest.passwordResetRequest;
 import com.example.backend.user.dto.response.UserResponse;
@@ -18,6 +27,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -27,6 +38,11 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final JWTGenerator jwtGenerator;
     private final CartRepository cartRepository;
+    private final BoardRepository boardRepository;
+    private final CommentRepository commentRepository;
+    private final FavoriteRepository favoriteRepository;
+    private final ScheduleRepository scheduleRepository;
+    private final TourRepository tourRepository;
     private final UserFilter userFilter;
 
     // 1️⃣ 회원가입 로직
@@ -81,13 +97,64 @@ public class UserService {
                 .build();
     }
 
-    // 3️⃣ 유저 삭제 로직
+    // 3️⃣ 유저 탈퇴 로직
     @Transactional
-    public void delete() {
-        userRepository.delete(
-                userRepository.findById(AuthUtil.getCurrentUserId())
-                        .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."))
-        );
+    public UserResponse.deleteResponse delete() {
+        User user = userRepository.findById(AuthUtil.getCurrentUserId())
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+        log.info("회원 탈퇴 시작 - 사용자 ID: {}", user.getUserId());
+
+        // 1. 댓글 삭제
+        List<Comment> userComments = commentRepository.findByUserId(user);
+        if (!userComments.isEmpty()) {
+            commentRepository.deleteAll(userComments);
+            log.info("사용자 댓글 삭제 완료 - 개수: {}", userComments.size());
+        }
+
+        // 2. 게시글 삭제 (BoardImage는 cascade로 자동 삭제)
+        List<Board> userBoards = boardRepository.findByUserId(user);
+        if (!userBoards.isEmpty()) {
+            boardRepository.deleteAll(userBoards);
+            log.info("사용자 게시글 삭제 완료 - 개수: {}", userBoards.size());
+        }
+
+        // 3. 카트 삭제 (먼저 투어 삭제 후 카트 삭제)
+        List<Cart> userCarts = cartRepository.findAllByUserId(user);
+        if (!userCarts.isEmpty()) {
+            for (Cart cart : userCarts) {
+                // 먼저 각 카트의 투어들을 삭제
+                tourRepository.deleteAllByCartId(cart);
+            }
+            // 그 다음 카트들을 삭제
+            cartRepository.deleteAll(userCarts);
+            log.info("사용자 카트 삭제 완료 - 개수: {}", userCarts.size());
+        }
+
+        // 4. 즐겨찾기 삭제
+        List<Favorite> userFavorites = favoriteRepository.findByUserOrderByCreatedAtDesc(user);
+        if (!userFavorites.isEmpty()) {
+            favoriteRepository.deleteAll(userFavorites);
+            log.info("사용자 즐겨찾기 삭제 완료 - 개수: {}", userFavorites.size());
+        }
+
+        // 5. 그룹 스케줄에서 사용자 제거 (스케줄 자체는 유지)
+        List<Schedule> userSchedules = scheduleRepository.findAllByUsersContaining(user);
+        for (Schedule schedule : userSchedules) {
+            schedule.getUsers().remove(user);
+            scheduleRepository.save(schedule);
+        }
+        if (!userSchedules.isEmpty()) {
+            log.info("그룹 스케줄에서 사용자 제거 완료 - 개수: {}", userSchedules.size());
+        }
+
+        // 6. 최종 사용자 삭제
+        userRepository.delete(user);
+        log.info("회원 탈퇴 완료 - 사용자 ID: {}", user.getUserId());
+        
+        return UserResponse.deleteResponse.builder()
+                .message("회원 탈퇴가 완료되었습니다.")
+                .build();
     }
 
     // 4️⃣ 유저 정보 조회
