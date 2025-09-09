@@ -5,6 +5,7 @@ import com.example.backend.cart.repository.CartRepository;
 import com.example.backend.jwt.config.JWTGenerator;
 import com.example.backend.jwt.dto.JwtDto;
 import com.example.backend.user.dto.request.UserRequest;
+import com.example.backend.user.dto.request.UserRequest.passwordResetRequest;
 import com.example.backend.user.dto.response.UserResponse;
 import com.example.backend.user.entity.User;
 import com.example.backend.user.filter.UserFilter;
@@ -135,7 +136,7 @@ public class UserService {
 
     // 6️⃣ 비밀번호 변경 로직
     @Transactional
-    public void passwordReset(UserRequest.passwordResetRequest request) {
+    public void passwordReset(passwordResetRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new IllegalArgumentException("등록된 사용자가 없습니다."));
 

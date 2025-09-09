@@ -33,8 +33,6 @@ public class ScheduleRequest {
         private UUID groupId;
         @Schema(description = "스케줄 타입 (PERSONAL, GROUP 중 하나)", example = "GROUP")
         private ScheduleType scheduleType;
-        @Schema(description = "스케줄 스타일 (여행 목적 등)", example = "쇼핑")
-        private String scheduleStyle;
         @Schema(description = "출발 장소", example = "서울역")
         private String startPlace;
         @Schema(description = "출발 시간", example = "09:00")
@@ -54,7 +52,6 @@ public class ScheduleRequest {
                     .updatedAt(null)
                     .budget(request.budget)
                     .groupId(group)
-                    .scheduleStyle(request.scheduleStyle)
                     .userId(user)
                     .scheduleType(request.scheduleType)
                     .cartId(cart)
@@ -94,8 +91,6 @@ public class ScheduleRequest {
         private String startPlace;
         @Schema(description = "스케줄 타입 (PERSONAL, GROUP 중 하나)", example = "GROUP")
         private ScheduleType scheduleType;
-        @Schema(description = "스케쥴 스타일", example = "휴양")
-        private String scheduleStyle;
 
         public static Schedule toEntity(ScheduleUpdateRequest request, Schedule schedule, Group group) {
             return Schedule.builder()
@@ -104,7 +99,6 @@ public class ScheduleRequest {
                     .createdAt(schedule.getCreatedAt())
                     .endDate(request.getEndDate())
                     .scheduleName(request.getScheduleName())
-                    .scheduleStyle(request.getScheduleStyle())
                     .scheduleType(request.getScheduleType())
                     .startDate(request.getStartDate())
                     .cartId(schedule.getCartId())
