@@ -293,7 +293,7 @@ public class RegionService {
                 .collect(Collectors.toList());
 
         List<Region> foundRegions = regionRepository.findByConcatenatedCodesIn(concatenatedCodes);
-
+        log.info(foundRegions.toString());
         return foundRegions.stream()
                 .filter(region -> region.getRegionImage() != null && !region.getRegionImage().isEmpty())
                 .collect(Collectors.toMap(
@@ -301,5 +301,6 @@ public class RegionService {
                         Region::getRegionImage,
                         (existing, replacement) -> existing
                 ));
+
     }
 }
