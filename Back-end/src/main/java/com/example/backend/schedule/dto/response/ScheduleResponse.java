@@ -92,6 +92,8 @@ public class ScheduleResponse {
         private List<scheduleItemInfo> scheduleItems;
         @Schema(description = "스케줄에 참여한 사용자 목록")
         private Set<scheduleUser> users;
+        @Schema(description = "스케쥴 편집 권한")
+        private boolean isEditable;
     }
 
     /**
