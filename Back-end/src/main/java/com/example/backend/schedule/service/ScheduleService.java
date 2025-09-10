@@ -380,14 +380,25 @@ public class ScheduleService {
 
     /**
      * 주어진 ID를 가진 스케줄의 상세 정보를 권한 확인 없이 조회합니다.
+     * 현재 로그인된 사용자가 스케줄 참여자인 경우 편집 가능 여부를 함께 반환합니다.
      *
      * @param scheduleId 상세 정보를 조회할 스케줄의 ID.
-     * @return 스케줄의 상세 정보와 포함된 스케줄 아이템 목록이 담긴 {@link scheduleDetailResponse} 객체.
+     * @return 스케줄의 상세 정보, 아이템 목록, 편집 가능 여부가 담긴 {@link scheduleDetailResponse} 객체.
      */
     @Transactional(readOnly = true)
     public scheduleDetailResponse getPublicScheduleDetail(UUID scheduleId) {
-        Schedule schedule = scheduleRepository.findById(scheduleId)
+        Schedule schedule = scheduleRepository.findWithUsersById(scheduleId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 스케줄을 찾을 수 없습니다."));
+        boolean isEditable = false;
+        try {
+            User currentUser = AuthUtil.getCurrentUser(userRepository);
+            if (currentUser != null && schedule.getUsers().contains(currentUser)) {
+                isEditable = true;
+            }
+        } catch (Exception e) {
+
+            log.info("Public schedule detail accessed by an anonymous user for scheduleId: {}", scheduleId);
+        }
 
         List<ScheduleItem> scheduleItems = scheduleItemRepository.findAllByScheduleId_ScheduleId(scheduleId);
         List<String> contentIds = scheduleItems.stream()
@@ -450,6 +461,7 @@ public class ScheduleService {
                 .updatedAt(schedule.getUpdatedAt())
                 .budget(schedule.getBudget())
                 .scheduleItems(itemsDto)
+                .isEditable(isEditable)
                 .build();
     }
 
