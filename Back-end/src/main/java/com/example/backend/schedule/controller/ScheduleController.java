@@ -68,19 +68,20 @@ public class ScheduleController {
     }
 
     /**
-     * 스케줄을 ID를 기반으로 삭제합니다.
+     * 스케줄에서 나갑니다.
      * <p>
-     * 이 엔드포인트는 시스템에서 스케줄을 영구적으로 삭제합니다.
+     * 현재 사용자를 스케줄 참여자 목록에서 제외합니다.
+     * 만약 마지막 참여자일 경우, 스케줄은 영구적으로 삭제됩니다.
      *
-     * @param scheduleId 삭제할 스케줄의 ID.
-     * @return 성공적인 삭제를 의미하는 내용 없는 {@link ResponseEntity}.
+     * @param scheduleId 나갈 스케줄의 ID.
+     * @return 성공적인 처리를 의미하는 내용 없는 {@link ResponseEntity}.
      */
     @DeleteMapping("/{scheduleId}")
-    @Operation(summary = "스케쥴 삭제", description = "스케쥴을 삭제하는 API.")
-    public ResponseEntity<Void> delete(
-            @Parameter(description = "삭제할 스케쥴 ID", example = "a3f12c9b-4567-4d89-9a12-c3b4d6a7f123")
+    @Operation(summary = "스케쥴 나가기", description = "현재 사용자를 스케쥴에서 제외시킵니다. 마지막 참여자일 경우 스케쥴이 삭제됩니다.")
+    public ResponseEntity<Void> leaveSchedule(
+            @Parameter(description = "나갈 스케쥴 ID", example = "a3f12c9b-4567-4d89-9a12-c3b4d6a7f123")
             @PathVariable UUID scheduleId) {
-        scheduleService.deleteSchedule(scheduleId);
+        scheduleService.leaveSchedule(scheduleId); // 서비스의 새 메서드 호출
         return ResponseEntity.noContent().build();
     }
 
@@ -164,5 +165,22 @@ public class ScheduleController {
             @PathVariable UUID scheduleId) {
         scheduleService.joinSchedule(scheduleId);
         return ResponseEntity.ok().build();
+    }
+
+    /**
+     * 특정 스케줄의 참여자 수를 조회합니다.
+     * <p>
+     * 이 엔드포인트는 해당 스케줄에 참여하고 있는 총 사용자 수를 반환합니다.
+     *
+     * @param scheduleId 참여자 수를 조회할 스케줄의 ID.
+     * @return 참여자 수를 담은 {@link ResponseEntity}.
+     */
+    @GetMapping("/{scheduleId}/count")
+    @Operation(summary = "스케쥴 참여자 수 조회", description = "특정 스케쥴에 참여하고 있는 사용자의 수를 조회하는 API.")
+    public ResponseEntity<Integer> getScheduleUserCount(
+            @Parameter(description = "스케쥴 ID", example = "b4e8f9a0-1234-4c56-8d7e-9f12345b6789")
+            @PathVariable UUID scheduleId) {
+        int userCount = scheduleService.countScheduleUsers(scheduleId);
+        return ResponseEntity.ok(userCount);
     }
 }
