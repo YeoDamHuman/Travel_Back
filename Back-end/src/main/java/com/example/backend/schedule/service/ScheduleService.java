@@ -97,23 +97,36 @@ public class ScheduleService {
     }
 
     /**
-     * 주어진 ID를 가진 스케줄을 삭제합니다.
-     * 스케줄에 참여한 사용자만 삭제할 수 있습니다.
+     * 현재 사용자가 참여하고 있는 스케줄에서 나갑니다.
+     * 만약 마지막 참여자였다면, 스케줄과 관련된 모든 아이템을 삭제합니다.
      *
-     * @param scheduleId 삭제할 스케줄의 ID.
+     * @param scheduleId 나갈 스케줄의 ID.
      */
     @Transactional
-    public void deleteSchedule(UUID scheduleId) {
+    public void leaveSchedule(UUID scheduleId) {
+        // 1. 현재 사용자 정보를 가져옵니다.
         User currentUser = AuthUtil.getCurrentUser(userRepository);
-        Schedule schedule = scheduleRepository.findWithUsersById(scheduleId)
-                .orElseThrow(() -> new IllegalArgumentException("삭제하려는 스케줄을 찾을 수 없습니다."));
 
-        if (schedule.getUsers().stream().noneMatch(user -> user.equals(currentUser))) {
-            throw new AccessDeniedException("스케줄을 삭제할 권한이 없습니다.");
+        // 2. 스케줄 정보를 참여자 목록과 함께 조회합니다.
+        Schedule schedule = scheduleRepository.findWithUsersById(scheduleId)
+                .orElseThrow(() -> new IllegalArgumentException("참여를 취소하려는 스케줄을 찾을 수 없습니다."));
+
+        // 3. 현재 사용자가 스케줄에 참여하고 있는지 확인합니다.
+        // List의 contains 메서드를 사용하면 더 간결하게 확인할 수 있습니다.
+        if (!schedule.getUsers().contains(currentUser)) {
+            throw new AccessDeniedException("스케줄에 참여하고 있지 않아 나갈 수 없습니다.");
         }
 
-        scheduleItemRepository.deleteAllByScheduleId_ScheduleId(scheduleId);
-        scheduleRepository.deleteById(scheduleId);
+        // 4. 스케줄의 참여자 수에 따라 로직을 분기합니다.
+        if (schedule.getUsers().size() > 1) {
+            // 4-1. 스케줄에 참여자가 2명 이상인 경우: 현재 사용자만 참여자 목록에서 제거합니다.
+            // @Transactional 어노테이션 덕분에 schedule 엔티티의 변경사항이 자동으로 DB에 반영됩니다. (dirty checking)
+            schedule.getUsers().remove(currentUser);
+        } else {
+            // 4-2. 현재 사용자가 마지막 참여자인 경우: 스케줄과 하위 아이템들을 모두 삭제합니다. (기존 로직)
+            scheduleItemRepository.deleteAllByScheduleId_ScheduleId(scheduleId);
+            scheduleRepository.delete(schedule); // ID 대신 조회한 객체를 직접 넘겨주면 더 효율적입니다.
+        }
     }
 
     /**
@@ -463,5 +476,30 @@ public class ScheduleService {
 
         // 4. 스케줄의 참여자 목록에 현재 사용자를 추가합니다.
         schedule.getUsers().add(currentUser);
+    }
+
+    /**
+     * 특정 스케줄에 참여하고 있는 사용자의 수를 반환합니다.
+     * 스케줄에 참여한 사용자만 조회가 가능합니다.
+     *
+     * @param scheduleId 조회할 스케줄의 ID
+     * @return 스케줄에 참여하고 있는 사용자의 수
+     */
+    @Transactional(readOnly = true)
+    public int countScheduleUsers(UUID scheduleId) {
+        // 1. 현재 사용자 정보를 가져옵니다.
+        User currentUser = AuthUtil.getCurrentUser(userRepository);
+
+        // 2. 스케줄 정보를 참여자 목록과 함께 조회합니다.
+        Schedule schedule = scheduleRepository.findWithUsersById(scheduleId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 스케줄을 찾을 수 없습니다."));
+
+        // 3. 현재 사용자가 스케줄에 참여하고 있는지 확인합니다.
+        if (schedule.getUsers().stream().noneMatch(user -> user.equals(currentUser))) {
+            throw new AccessDeniedException("스케줄 참여자 수를 조회할 권한이 없습니다.");
+        }
+
+        // 4. 참여자 목록의 크기(사용자 수)를 반환합니다.
+        return schedule.getUsers().size();
     }
 }
