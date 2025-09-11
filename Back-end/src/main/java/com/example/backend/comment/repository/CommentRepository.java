@@ -2,6 +2,7 @@ package com.example.backend.comment.repository;
 
 import com.example.backend.board.entity.Board;
 import com.example.backend.comment.entity.Comment;
+import com.example.backend.user.entity.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -11,8 +12,9 @@ import java.util.UUID;
 
 public interface CommentRepository extends JpaRepository<Comment, UUID> {
 
-    Page<Comment> findByBoardId(Board board, Pageable pageable);
+    Page<Comment> findByBoardId(Board boardId, Pageable pageable);
 
     List<Comment> findByCommentReportGreaterThanEqual(int i);
-
+    
+    List<Comment> findByUserId(User user);
 }
