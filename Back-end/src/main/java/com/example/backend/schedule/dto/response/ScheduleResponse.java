@@ -37,12 +37,12 @@ public class ScheduleResponse {
     }
 
     /**
-     * 스케줄 목록 조회 시 사용되는 기본 정보 DTO입니다.
+     * 스케줄 '목록' 조회 시 사용되는 DTO (사용자 정보 제외)
      */
     @Getter
     @Builder
     @AllArgsConstructor
-    public static class scheduleInfo {
+    public static class ScheduleListInfo {
         @Schema(description = "스케줄 ID", example = "9b9de25e-6a84-4b4e-b5e7-b81cdd90cc12")
         private UUID scheduleId;
         @Schema(description = "스케줄 이름", example = "여름 휴가 계획")
@@ -63,8 +63,6 @@ public class ScheduleResponse {
         private String scheduleStyle;
         @Schema(description = "지역 이미지", example = "https://example.com/images/default.jpg")
         private String regionImage;
-        @Schema(description = "스케줄에 참여한 사용자 목록")
-        private Set<scheduleUser> users;
     }
 
     /**
@@ -73,7 +71,7 @@ public class ScheduleResponse {
     @Getter
     @Builder
     @AllArgsConstructor
-    public static class scheduleDetailResponse {
+    public static class ScheduleDetailResponse {
         @Schema(description = "스케줄 ID", example = "9b9de25e-6a84-4b4e-b5e7-b81cdd90cc12")
         private UUID scheduleId;
         @Schema(description = "스케줄 이름", example = "여름 휴가 계획")
@@ -91,9 +89,11 @@ public class ScheduleResponse {
         @Schema(description = "스케줄에 포함된 아이템 목록")
         private List<scheduleItemInfo> scheduleItems;
         @Schema(description = "스케줄에 참여한 사용자 목록")
-        private Set<scheduleUser> users;
+        private Set<ScheduleUser> users;
         @Schema(description = "스케쥴 편집 권한")
         private boolean isEditable;
+        @Schema(description = "대표 지역 이미지", example = "https://example.com/images/default.jpg")
+        private String regionImage;
     }
 
     /**
@@ -102,12 +102,11 @@ public class ScheduleResponse {
     @Getter
     @Builder
     @AllArgsConstructor
-    public static class scheduleUser {
+    public static class ScheduleUser {
         private UUID userId;
         private String userName;
         private String userProfileImage;
     }
-
 
     /**
      * 스케줄에 포함된 개별 아이템의 상세 정보 DTO입니다.
