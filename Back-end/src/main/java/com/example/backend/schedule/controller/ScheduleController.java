@@ -90,7 +90,7 @@ public class ScheduleController {
      * @param scheduleId 조회할 스케줄의 ID.
      * @return 스케줄의 상세 정보.
      */
-    @GetMapping("/{scheduleId}")
+    @GetMapping("/details/{scheduleId}")
     @Operation(summary = "스케쥴 상세 조회 (통합)", description = "로그인 여부와 관계없이 스케쥴 상세 정보를 조회합니다. 참여자일 경우 편집 가능 여부가 반환됩니다.")
     public ResponseEntity<ScheduleResponse.ScheduleDetailResponse> getScheduleDetail(
             @Parameter(description = "스케쥴 ID", example = "b4e8f9a0-1234-4c56-8d7e-9f12345b6789")
