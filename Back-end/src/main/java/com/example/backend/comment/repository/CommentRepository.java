@@ -13,4 +13,6 @@ public interface CommentRepository extends JpaRepository<Comment, UUID> {
     Page<Comment> findByBoardId(Board board, Pageable pageable);
 
     List<Comment> findByCommentReportGreaterThanEqual(int i);
+
+    Page<Comment> findByBoard(Board board, Pageable pageable);
 }

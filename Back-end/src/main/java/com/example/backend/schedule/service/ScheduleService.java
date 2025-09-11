@@ -1,20 +1,20 @@
 package com.example.backend.schedule.service;
 
+import com.example.backend.board.repository.BoardRepository;
 import com.example.backend.common.auth.AuthUtil;
 import com.example.backend.region.service.RegionService;
 import com.example.backend.region.service.RegionService.CodePair;
 import com.example.backend.schedule.dto.request.ScheduleRequest.ScheduleCreateRequest;
 import com.example.backend.schedule.dto.request.ScheduleRequest.ScheduleUpdateRequest;
-import com.example.backend.schedule.dto.response.ScheduleResponse;
 import com.example.backend.schedule.dto.response.ScheduleResponse.ScheduleDetailResponse;
 import com.example.backend.schedule.dto.response.ScheduleResponse.ScheduleListInfo;
 import com.example.backend.schedule.dto.response.ScheduleResponse.ScheduleUser;
-import com.example.backend.schedule.dto.response.ScheduleResponse.scheduleItemInfo;
-import com.example.backend.scheduleItem.service.ScheduleItemService;
+import com.example.backend.schedule.dto.response.ScheduleResponse.ScheduleItemInfo;
 import com.example.backend.schedule.entity.Schedule;
 import com.example.backend.schedule.repository.ScheduleRepository;
 import com.example.backend.scheduleItem.entity.ScheduleItem;
 import com.example.backend.scheduleItem.repository.ScheduleItemRepository;
+import com.example.backend.scheduleItem.service.ScheduleItemService;
 import com.example.backend.tour.entity.TourCategory;
 import com.example.backend.tour.webclient.TourApiClient;
 import com.example.backend.user.entity.User;
@@ -48,6 +48,7 @@ public class ScheduleService {
     private final ObjectMapper objectMapper;
     private final TourApiClient tourApiClient;
     private final RegionService regionService;
+    private final BoardRepository boardRepository;
 
     /**
      * 새로운 스케줄을 생성하고 스케줄 아이템들을 저장합니다.
@@ -140,7 +141,12 @@ public class ScheduleService {
             return Collections.emptyList();
         }
 
-        List<UUID> scheduleIds = schedules.stream().map(Schedule::getScheduleId).collect(Collectors.toList());
+        List<UUID> scheduleIds = schedules.stream()
+                .map(Schedule::getScheduleId)
+                .collect(Collectors.toList());
+
+        Set<UUID> boardedScheduleIds = boardRepository.findScheduleIdsWithBoardIn(scheduleIds);
+
         List<ScheduleItem> firstItems = scheduleItemRepository.findFirstItemForEachSchedule(scheduleIds);
         Map<UUID, String> scheduleToContentIdMap = firstItems.stream()
                 .collect(Collectors.toMap(
@@ -174,6 +180,8 @@ public class ScheduleService {
                         }
                     }
 
+                    boolean isBoarded = boardedScheduleIds.contains(schedule.getScheduleId());
+
                     return ScheduleListInfo.builder()
                             .scheduleId(schedule.getScheduleId())
                             .scheduleName(schedule.getScheduleName())
@@ -183,7 +191,7 @@ public class ScheduleService {
                             .updatedAt(schedule.getUpdatedAt())
                             .budget(schedule.getBudget())
                             .scheduleStyle(schedule.getScheduleStyle())
-                            .isBoarded(schedule.isBoarded())
+                            .isBoarded(isBoarded)
                             .regionImage(regionImage)
                             .build();
                 })
@@ -232,7 +240,7 @@ public class ScheduleService {
                 .collect(Collectors.toList());
         Map<String, String> regionNameMap = regionService.getRegionNamesByCodePairs(codePairsToSearch);
 
-        List<scheduleItemInfo> itemsDto = scheduleItems.stream()
+        List<ScheduleItemInfo> itemsDto = scheduleItems.stream()
                 .map(item -> {
                     String contentId = item.getContentId();
                     String title = tourTitlesMap.getOrDefault(contentId, "장소 이름 없음");
@@ -247,7 +255,7 @@ public class ScheduleService {
                     Double latitude = location.get("latitude");
                     Double longitude = location.get("longitude");
 
-                    return scheduleItemInfo.builder()
+                    return ScheduleItemInfo.builder()
                             .scheduleItemId(item.getScheduleItemId())
                             .contentId(contentId)
                             .title(title)

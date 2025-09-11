@@ -79,17 +79,16 @@ public class ScheduleRequest {
          */
         public static Schedule toEntity(ScheduleUpdateRequest request, Schedule originalSchedule) {
             return Schedule.builder()
-                    .scheduleId(originalSchedule.getScheduleId()) // ID는 원본에서
+                    .scheduleId(originalSchedule.getScheduleId())
                     .scheduleName(request.getScheduleName())
                     .startDate(request.getStartDate())
                     .endDate(request.getEndDate())
                     .budget(request.getBudget())
                     .startPlace(request.getStartPlace())
-                    .createdAt(originalSchedule.getCreatedAt()) // 생성일은 원본에서
-                    .scheduleStyle(originalSchedule.getScheduleStyle()) // 스타일은 원본에서 (DTO에 없으므로)
-                    .startTime(originalSchedule.getStartTime()) // 시작 시간은 원본에서 (DTO에 없으므로)
-                    .isBoarded(originalSchedule.isBoarded()) // 일기 여부는 원본에서
-                    .users(originalSchedule.getUsers()) // ⭐️ 중요: 기존 참여자 정보가 유실되지 않도록 반드시 복사해야 합니다.
+                    .createdAt(originalSchedule.getCreatedAt())
+                    .scheduleStyle(originalSchedule.getScheduleStyle())
+                    .startTime(originalSchedule.getStartTime())
+                    .users(originalSchedule.getUsers())
                     .build();
         }
     }

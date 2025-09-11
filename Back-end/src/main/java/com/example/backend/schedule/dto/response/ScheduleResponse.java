@@ -12,30 +12,8 @@ import java.util.UUID;
 /**
  * 스케줄 관련 API 응답을 위한 DTO 클래스들을 포함합니다.
  */
+
 public class ScheduleResponse {
-
-    /**
-     * 스케줄 생성 응답 DTO입니다.
-     */
-    @Getter
-    @Builder
-    @AllArgsConstructor
-    public static class scheduleCreateResponse {
-        @Schema(description = "생성된 스케줄 ID", example = "9b9de25e-6a84-4b4e-b5e7-b81cdd90cc12")
-        private UUID scheduleId;
-    }
-
-    /**
-     * 스케줄 수정 응답 DTO입니다.
-     */
-    @Getter
-    @Builder
-    @AllArgsConstructor
-    public static class scheduleUpdateResponse {
-        @Schema(description = "업데이트된 스케줄 ID", example = "9b9de25e-6a84-4b4e-b5e7-b81cdd90cc12")
-        private UUID scheduleId;
-    }
-
     /**
      * 스케줄 '목록' 조회 시 사용되는 DTO (사용자 정보 제외)
      */
@@ -87,7 +65,7 @@ public class ScheduleResponse {
         @Schema(description = "예산 (단위: 원)", example = "1500000")
         private BigInteger budget;
         @Schema(description = "스케줄에 포함된 아이템 목록")
-        private List<scheduleItemInfo> scheduleItems;
+        private List<ScheduleItemInfo> scheduleItems;
         @Schema(description = "스케줄에 참여한 사용자 목록")
         private Set<ScheduleUser> users;
         @Schema(description = "스케쥴 편집 권한")
@@ -114,7 +92,7 @@ public class ScheduleResponse {
     @Getter
     @Builder
     @AllArgsConstructor
-    public static class scheduleItemInfo {
+    public static class ScheduleItemInfo {
         @Schema(description = "아이템 ID", example = "d3f12c9b-4567-4d89-9a12-c3b4d6a7f456")
         private UUID scheduleItemId;
         @Schema(description = "장소 ID", example = "a1b2c3d4-5678-9101-1121-314151617181")
