@@ -123,7 +123,7 @@ public class BoardService {
                 .toList();
 
         Pageable pageable = PageRequest.of(0, 5, Sort.by("createdAt").descending());
-        Page<Comment> commentPage = commentRepository.findByBoard(board, pageable);
+        Page<Comment> commentPage = commentRepository.findByBoardId(board, pageable);
 
         List<CommentResponseDto> comments = commentPage.stream()
                 .map(comment -> CommentResponseDto.builder()
