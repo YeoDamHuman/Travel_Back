@@ -8,6 +8,7 @@ import com.example.backend.user.dto.request.UserRequest.updateRequest;
 import com.example.backend.user.dto.response.UserResponse;
 import com.example.backend.user.dto.response.UserResponse.InformationResponse;
 import com.example.backend.user.dto.response.UserResponse.updateResponse;
+import com.example.backend.user.dto.response.UserResponse.deleteResponse;
 import com.example.backend.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -39,9 +40,9 @@ public class UserController {
 
     @DeleteMapping("/delete")
     @Operation(summary = "유저 삭제", description = "로컬 유저 탈퇴 API")
-    public ResponseEntity<Void> delete() {
-        userService.delete();
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<deleteResponse> delete() {
+        deleteResponse response = userService.delete();
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/me")
