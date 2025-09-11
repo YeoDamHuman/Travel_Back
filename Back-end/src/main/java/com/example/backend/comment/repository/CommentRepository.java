@@ -11,13 +11,10 @@ import java.util.List;
 import java.util.UUID;
 
 public interface CommentRepository extends JpaRepository<Comment, UUID> {
-    
-    Page<Comment> findByBoardId(Board board, Pageable pageable);
+
+    Page<Comment> findByBoardId(Board boardId, Pageable pageable);
 
     List<Comment> findByCommentReportGreaterThanEqual(int i);
-
-    Page<Comment> findByBoard(Board board, Pageable pageable);
-
+    
     List<Comment> findByUserId(User user);
-
 }
