@@ -5,8 +5,10 @@ import com.example.backend.region.service.RegionService;
 import com.example.backend.region.service.RegionService.CodePair;
 import com.example.backend.schedule.dto.request.ScheduleRequest.ScheduleCreateRequest;
 import com.example.backend.schedule.dto.request.ScheduleRequest.ScheduleUpdateRequest;
-import com.example.backend.schedule.dto.response.ScheduleResponse.scheduleDetailResponse;
-import com.example.backend.schedule.dto.response.ScheduleResponse.scheduleInfo;
+import com.example.backend.schedule.dto.response.ScheduleResponse;
+import com.example.backend.schedule.dto.response.ScheduleResponse.ScheduleDetailResponse;
+import com.example.backend.schedule.dto.response.ScheduleResponse.ScheduleListInfo;
+import com.example.backend.schedule.dto.response.ScheduleResponse.ScheduleUser;
 import com.example.backend.schedule.dto.response.ScheduleResponse.scheduleItemInfo;
 import com.example.backend.scheduleItem.service.ScheduleItemService;
 import com.example.backend.schedule.entity.Schedule;
@@ -79,6 +81,8 @@ public class ScheduleService {
      *
      * @param request 업데이트할 스케줄의 ID와 새로운 정보가 담긴 {@link ScheduleUpdateRequest} 객체.
      * @return 업데이트된 스케줄의 ID.
+     * @throws IllegalArgumentException 수정하려는 스케줄을 찾을 수 없는 경우.
+     * @throws AccessDeniedException    현재 사용자가 스케줄을 수정할 권한이 없는 경우.
      */
     @Transactional
     public UUID updateSchedule(ScheduleUpdateRequest request) {
@@ -101,41 +105,34 @@ public class ScheduleService {
      * 만약 마지막 참여자였다면, 스케줄과 관련된 모든 아이템을 삭제합니다.
      *
      * @param scheduleId 나갈 스케줄의 ID.
+     * @throws IllegalArgumentException 참여를 취소하려는 스케줄을 찾을 수 없는 경우.
+     * @throws AccessDeniedException    현재 사용자가 스케줄에 참여하고 있지 않은 경우.
      */
     @Transactional
     public void leaveSchedule(UUID scheduleId) {
-        // 1. 현재 사용자 정보를 가져옵니다.
         User currentUser = AuthUtil.getCurrentUser(userRepository);
-
-        // 2. 스케줄 정보를 참여자 목록과 함께 조회합니다.
         Schedule schedule = scheduleRepository.findWithUsersById(scheduleId)
                 .orElseThrow(() -> new IllegalArgumentException("참여를 취소하려는 스케줄을 찾을 수 없습니다."));
 
-        // 3. 현재 사용자가 스케줄에 참여하고 있는지 확인합니다.
-        // List의 contains 메서드를 사용하면 더 간결하게 확인할 수 있습니다.
         if (!schedule.getUsers().contains(currentUser)) {
             throw new AccessDeniedException("스케줄에 참여하고 있지 않아 나갈 수 없습니다.");
         }
 
-        // 4. 스케줄의 참여자 수에 따라 로직을 분기합니다.
         if (schedule.getUsers().size() > 1) {
-            // 4-1. 스케줄에 참여자가 2명 이상인 경우: 현재 사용자만 참여자 목록에서 제거합니다.
-            // @Transactional 어노테이션 덕분에 schedule 엔티티의 변경사항이 자동으로 DB에 반영됩니다. (dirty checking)
             schedule.getUsers().remove(currentUser);
         } else {
-            // 4-2. 현재 사용자가 마지막 참여자인 경우: 스케줄과 하위 아이템들을 모두 삭제합니다. (기존 로직)
             scheduleItemRepository.deleteAllByScheduleId_ScheduleId(scheduleId);
-            scheduleRepository.delete(schedule); // ID 대신 조회한 객체를 직접 넘겨주면 더 효율적입니다.
+            scheduleRepository.delete(schedule);
         }
     }
 
     /**
      * 현재 사용자가 참여하고 있는 스케줄 목록을 조회합니다.
      *
-     * @return 조회된 스케줄 정보 목록.
+     * @return 현재 사용자가 참여한 스케줄의 요약 정보 목록 ({@link ScheduleListInfo}).
      */
     @Transactional(readOnly = true)
-    public List<scheduleInfo> getSchedules() {
+    public List<ScheduleListInfo> getSchedules() {
         User currentUser = AuthUtil.getCurrentUser(userRepository);
         List<Schedule> schedules = scheduleRepository.findAllByUsersContaining(currentUser);
 
@@ -177,7 +174,7 @@ public class ScheduleService {
                         }
                     }
 
-                    return scheduleInfo.builder()
+                    return ScheduleListInfo.builder()
                             .scheduleId(schedule.getScheduleId())
                             .scheduleName(schedule.getScheduleName())
                             .startDate(schedule.getStartDate())
@@ -194,20 +191,27 @@ public class ScheduleService {
     }
 
     /**
-     * 주어진 ID를 가진 스케줄의 상세 정보를 조회합니다.
-     * 스케줄에 참여한 사용자만 조회할 수 있습니다.
+     * 특정 스케줄의 상세 정보를 조회합니다. (통합 API)
+     * 로그인 여부와 관계없이 누구나 호출할 수 있습니다.
+     * 로그인한 사용자가 스케줄 참여자일 경우, 편집 가능 여부(`isEditable`)가 true로 설정됩니다.
      *
-     * @param scheduleId 상세 정보를 조회할 스케줄의 ID.
-     * @return 스케줄의 상세 정보와 포함된 스케줄 아이템 목록이 담긴 {@link scheduleDetailResponse} 객체.
+     * @param scheduleId 조회할 스케줄의 ID.
+     * @return 스케줄의 상세 정보가 담긴 {@link ScheduleDetailResponse} 객체.
+     * @throws IllegalArgumentException 해당 ID의 스케줄을 찾을 수 없는 경우.
      */
     @Transactional(readOnly = true)
-    public scheduleDetailResponse getScheduleDetail(UUID scheduleId) {
-        User currentUser = AuthUtil.getCurrentUser(userRepository);
+    public ScheduleDetailResponse getScheduleDetail(UUID scheduleId) {
         Schedule schedule = scheduleRepository.findWithUsersById(scheduleId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 스케줄을 찾을 수 없습니다."));
 
-        if (schedule.getUsers().stream().noneMatch(user -> user.equals(currentUser))) {
-            throw new AccessDeniedException("스케줄을 조회할 권한이 없습니다.");
+        boolean isEditable = false;
+        try {
+            User currentUser = AuthUtil.getCurrentUser(userRepository);
+            if (currentUser != null && schedule.getUsers().contains(currentUser)) {
+                isEditable = true;
+            }
+        } catch (Exception e) {
+            log.info("Anonymous user accessing schedule detail for scheduleId: {}", scheduleId);
         }
 
         List<ScheduleItem> scheduleItems = scheduleItemRepository.findAllByScheduleId_ScheduleId(scheduleId);
@@ -262,7 +266,33 @@ public class ScheduleService {
                 })
                 .collect(Collectors.toList());
 
-        return scheduleDetailResponse.builder()
+        Set<ScheduleUser> userInfos = schedule.getUsers().stream()
+                .map(user -> ScheduleUser.builder()
+                        .userId(user.getUserId())
+                        .userName(user.getUserNickname())
+                        .userProfileImage(user.getUserProfileImage())
+                        .build())
+                .collect(Collectors.toSet());
+
+        String regionImage = null;
+        if (!scheduleItems.isEmpty()) {
+            String firstItemContentId = scheduleItems.get(0).getContentId();
+            Map<String, String> firstItemExtraInfo = tourExtraInfoMap.get(firstItemContentId);
+
+            if (firstItemExtraInfo != null) {
+                String lDongRegnCd = firstItemExtraInfo.get("lDongRegnCd");
+                String lDongSignguCd = firstItemExtraInfo.get("lDongSignguCd");
+
+                if (lDongRegnCd != null && lDongSignguCd != null) {
+                    CodePair codePair = new CodePair(lDongRegnCd, lDongSignguCd);
+                    Map<String, String> regionImageMap = regionService.getRegionImagesByCodePairs(Collections.singletonList(codePair));
+                    String key = lDongRegnCd + "_" + lDongSignguCd;
+                    regionImage = regionImageMap.get(key);
+                }
+            }
+        }
+
+        return ScheduleDetailResponse.builder()
                 .scheduleId(schedule.getScheduleId())
                 .scheduleName(schedule.getScheduleName())
                 .startDate(schedule.getStartDate())
@@ -271,14 +301,21 @@ public class ScheduleService {
                 .updatedAt(schedule.getUpdatedAt())
                 .budget(schedule.getBudget())
                 .scheduleItems(itemsDto)
+                .isEditable(isEditable)
+                .users(userInfos)
+                .regionImage(regionImage)
                 .build();
     }
+
 
     /**
      * AI 서비스를 활용하여 스케줄의 경로를 최적화합니다.
      * 스케줄에 참여한 사용자만 경로를 최적화할 수 있습니다.
      *
      * @param scheduleId 최적화할 스케줄의 ID.
+     * @throws IllegalArgumentException 스케줄을 찾을 수 없거나 스케줄에 아이템이 없는 경우.
+     * @throws AccessDeniedException    현재 사용자가 스케줄을 최적화할 권한이 없는 경우.
+     * @throws RuntimeException         AI 응답 JSON 파싱에 실패한 경우.
      */
     @Transactional
     public void optimizeRoute(UUID scheduleId) {
@@ -379,114 +416,23 @@ public class ScheduleService {
     }
 
     /**
-     * 주어진 ID를 가진 스케줄의 상세 정보를 권한 확인 없이 조회합니다.
-     * 현재 로그인된 사용자가 스케줄 참여자인 경우 편집 가능 여부를 함께 반환합니다.
-     *
-     * @param scheduleId 상세 정보를 조회할 스케줄의 ID.
-     * @return 스케줄의 상세 정보, 아이템 목록, 편집 가능 여부가 담긴 {@link scheduleDetailResponse} 객체.
-     */
-    @Transactional(readOnly = true)
-    public scheduleDetailResponse getPublicScheduleDetail(UUID scheduleId) {
-        Schedule schedule = scheduleRepository.findWithUsersById(scheduleId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 스케줄을 찾을 수 없습니다."));
-        boolean isEditable = false;
-        try {
-            User currentUser = AuthUtil.getCurrentUser(userRepository);
-            if (currentUser != null && schedule.getUsers().contains(currentUser)) {
-                isEditable = true;
-            }
-        } catch (Exception e) {
-
-            log.info("Public schedule detail accessed by an anonymous user for scheduleId: {}", scheduleId);
-        }
-
-        List<ScheduleItem> scheduleItems = scheduleItemRepository.findAllByScheduleId_ScheduleId(scheduleId);
-        List<String> contentIds = scheduleItems.stream()
-                .map(ScheduleItem::getContentId)
-                .filter(Objects::nonNull)
-                .distinct()
-                .collect(Collectors.toList());
-
-        Map<String, String> tourTitlesMap = tourApiClient.getTourTitlesMapByContentIds(contentIds);
-        Map<String, Map<String, String>> tourExtraInfoMap = tourApiClient.getTourExtraInfoMapByContentIds(contentIds);
-        Map<String, Map<String, Double>> tourLocationMap = tourApiClient.getTourLocationMapByContentIds(contentIds);
-
-        List<CodePair> codePairsToSearch = tourExtraInfoMap.values().stream()
-                .map(info -> new CodePair(info.get("lDongRegnCd"), info.get("lDongSignguCd")))
-                .filter(pair -> pair.lDongRegnCd() != null && !pair.lDongRegnCd().isEmpty())
-                .distinct()
-                .collect(Collectors.toList());
-        Map<String, String> regionNameMap = regionService.getRegionNamesByCodePairs(codePairsToSearch);
-
-        List<scheduleItemInfo> itemsDto = scheduleItems.stream()
-                .map(item -> {
-                    String contentId = item.getContentId();
-                    String title = tourTitlesMap.getOrDefault(contentId, "장소 이름 없음");
-                    Map<String, String> extraInfo = tourExtraInfoMap.getOrDefault(contentId, Collections.emptyMap());
-                    String tema = extraInfo.getOrDefault("tema", "");
-                    String lDongRegnCd = extraInfo.getOrDefault("lDongRegnCd", "");
-                    String lDongSignguCd = extraInfo.getOrDefault("lDongSignguCd", "");
-                    String address = extraInfo.getOrDefault("address", "주소 정보 없음");
-                    String regionKey = lDongRegnCd + "_" + lDongSignguCd;
-                    String region = regionNameMap.getOrDefault(regionKey, "");
-                    Map<String, Double> location = tourLocationMap.getOrDefault(contentId, Collections.emptyMap());
-                    Double latitude = location.get("latitude");
-                    Double longitude = location.get("longitude");
-
-                    return scheduleItemInfo.builder()
-                            .scheduleItemId(item.getScheduleItemId())
-                            .contentId(contentId)
-                            .title(title)
-                            .dayNumber(item.getDayNumber())
-                            .memo(item.getMemo())
-                            .cost(item.getCost())
-                            .order(item.getOrder())
-                            .tema(tema)
-                            .regionName(region)
-                            .latitude(latitude)
-                            .longitude(longitude)
-                            .address(address)
-                            .lDongRegnCd(lDongRegnCd)
-                            .lDongSignguCd(lDongSignguCd)
-                            .build();
-                })
-                .collect(Collectors.toList());
-
-        return scheduleDetailResponse.builder()
-                .scheduleId(schedule.getScheduleId())
-                .scheduleName(schedule.getScheduleName())
-                .startDate(schedule.getStartDate())
-                .endDate(schedule.getEndDate())
-                .createdAt(schedule.getCreatedAt())
-                .updatedAt(schedule.getUpdatedAt())
-                .budget(schedule.getBudget())
-                .scheduleItems(itemsDto)
-                .isEditable(isEditable)
-                .build();
-    }
-
-    /**
      * 현재 사용자를 특정 스케줄의 참여자로 추가합니다.
      *
-     * @param scheduleId 참여할 스케줄의 ID
-     * @throws IllegalArgumentException 스케줄을 찾을 수 없는 경우
-     * @throws IllegalStateException    사용자가 이미 해당 스케줄에 참여하고 있는 경우
+     * @param scheduleId 참여할 스케줄의 ID.
+     * @throws IllegalArgumentException 해당 ID의 스케줄을 찾을 수 없는 경우.
+     * @throws IllegalStateException    사용자가 이미 해당 스케줄에 참여하고 있는 경우.
      */
     @Transactional
     public void joinSchedule(UUID scheduleId) {
-        // 1. 요청을 보낸 사용자를 식별합니다. (JWT 헤더 기반)
         User currentUser = AuthUtil.getCurrentUser(userRepository);
 
-        // 2. 참여하려는 스케줄을 조회합니다.
         Schedule schedule = scheduleRepository.findWithUsersById(scheduleId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 스케줄을 찾을 수 없습니다."));
 
-        // 3. 이미 참여자인지 확인하여 중복 추가를 방지합니다.
         if (schedule.getUsers().contains(currentUser)) {
             throw new IllegalStateException("이미 해당 스케줄에 참여하고 있습니다.");
         }
 
-        // 4. 스케줄의 참여자 목록에 현재 사용자를 추가합니다.
         schedule.getUsers().add(currentUser);
     }
 
@@ -494,24 +440,21 @@ public class ScheduleService {
      * 특정 스케줄에 참여하고 있는 사용자의 수를 반환합니다.
      * 스케줄에 참여한 사용자만 조회가 가능합니다.
      *
-     * @param scheduleId 조회할 스케줄의 ID
-     * @return 스케줄에 참여하고 있는 사용자의 수
+     * @param scheduleId 조회할 스케줄의 ID.
+     * @return 스케줄에 참여하고 있는 사용자의 수.
+     * @throws IllegalArgumentException 해당 ID의 스케줄을 찾을 수 없는 경우.
+     * @throws AccessDeniedException    현재 사용자가 참여자 수를 조회할 권한이 없는 경우.
      */
     @Transactional(readOnly = true)
     public int countScheduleUsers(UUID scheduleId) {
-        // 1. 현재 사용자 정보를 가져옵니다.
         User currentUser = AuthUtil.getCurrentUser(userRepository);
-
-        // 2. 스케줄 정보를 참여자 목록과 함께 조회합니다.
         Schedule schedule = scheduleRepository.findWithUsersById(scheduleId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 스케줄을 찾을 수 없습니다."));
 
-        // 3. 현재 사용자가 스케줄에 참여하고 있는지 확인합니다.
         if (schedule.getUsers().stream().noneMatch(user -> user.equals(currentUser))) {
             throw new AccessDeniedException("스케줄 참여자 수를 조회할 권한이 없습니다.");
         }
 
-        // 4. 참여자 목록의 크기(사용자 수)를 반환합니다.
         return schedule.getUsers().size();
     }
 }
