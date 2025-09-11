@@ -3,6 +3,7 @@ package com.example.backend.schedule.controller;
 import com.example.backend.schedule.dto.request.ScheduleRequest.ScheduleCreateRequest;
 import com.example.backend.schedule.dto.request.ScheduleRequest.ScheduleUpdateRequest;
 import com.example.backend.schedule.dto.response.ScheduleResponse;
+import com.example.backend.schedule.dto.response.ScheduleResponse.ScheduleId;
 import com.example.backend.schedule.dto.response.ScheduleResponse.ScheduleListInfo;
 import com.example.backend.schedule.service.ScheduleService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -34,10 +35,12 @@ public class ScheduleController {
      */
     @PostMapping("/create")
     @Operation(summary = "스케쥴 생성", description = "새로운 스케쥴을 생성하고 생성된 ID를 반환합니다.")
-    public ResponseEntity<UUID> create(
+    public ResponseEntity<ScheduleId> create(
             @RequestBody ScheduleCreateRequest request) {
         UUID scheduleId = scheduleService.createSchedule(request);
-        return ResponseEntity.ok(scheduleId);
+        return ResponseEntity.ok(ScheduleId.builder()
+                .scheduleId(scheduleId)
+                .build());
     }
 
     /**
@@ -47,10 +50,12 @@ public class ScheduleController {
      */
     @PutMapping("/update")
     @Operation(summary = "스케쥴 업데이트", description = "스케쥴을 수정하고 수정된 ID를 반환합니다.")
-    public ResponseEntity<UUID> update(
+    public ResponseEntity<ScheduleId> update(
             @RequestBody ScheduleUpdateRequest request) {
         UUID scheduleId = scheduleService.updateSchedule(request);
-        return ResponseEntity.ok(scheduleId);
+        return ResponseEntity.ok(ScheduleId.builder()
+                .scheduleId(scheduleId)
+                .build());
     }
 
     /**

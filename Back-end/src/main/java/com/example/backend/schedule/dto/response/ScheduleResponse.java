@@ -14,6 +14,14 @@ import java.util.UUID;
  */
 
 public class ScheduleResponse {
+
+    @Getter
+    @Builder
+    @AllArgsConstructor
+    public static class ScheduleId {
+        private UUID scheduleId;
+    }
+
     /**
      * 스케줄 '목록' 조회 시 사용되는 DTO (사용자 정보 제외)
      */
