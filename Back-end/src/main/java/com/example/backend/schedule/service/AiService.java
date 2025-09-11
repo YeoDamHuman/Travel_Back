@@ -30,10 +30,38 @@ public class AiService {
 
     public record ItemWithLocationInfo(String contentId, String title, double latitude, double longitude, String category) {}
 
+    /**
+     * AI를 이용해 최적화된 여행 경로를 두 단계에 걸쳐 생성합니다.
+     * 1단계: 장소 목록을 날짜별로 그룹화하는 중간 계획을 생성합니다.
+     * 2단계: 중간 계획을 바탕으로 일자별 동선을 최적화하고 최종 JSON을 생성합니다.
+     */
     public Mono<String> getOptimizedRouteJson(UUID scheduleId, LocalDate startDate, LocalDate endDate, String startPlace, LocalTime startTime, List<ItemWithLocationInfo> itemsWithLocation) {
-        log.info("🚀 AI 경로 최적화 시작 - Schedule ID: {}", scheduleId);
+        log.info("🚀 AI 2-Step 경로 최적화 시작 - Schedule ID: {}", scheduleId);
 
-        String prompt = createOptimizationPrompt(scheduleId, startDate, endDate, startPlace, startTime, itemsWithLocation);
+        // 1단계: 날짜별 장소 그룹화 계획 요청
+        log.info("▶️ [1/2] 중간 계획 생성 요청 시작");
+        String firstPrompt = PromptFactory.createFirstStepPrompt(scheduleId, startDate, endDate, startTime, itemsWithLocation);
+        return callOpenAiApi(firstPrompt)
+                .flatMap(intermediatePlanJson -> {
+                    log.info("✅ [1/2] 중간 계획 수신 성공");
+                    log.debug("📄 중간 계획 JSON: {}", intermediatePlanJson);
+
+                    // 2단계: 경로 최적화 및 최종 JSON 포맷팅 요청
+                    log.info("▶️ [2/2] 최종 경로 최적화 및 포맷팅 요청 시작");
+                    String secondPrompt = PromptFactory.createSecondStepPrompt(scheduleId, startPlace, intermediatePlanJson);
+                    return callOpenAiApi(secondPrompt);
+                })
+                .doOnSuccess(finalJson -> log.info("✅ [2/2] 최종 경로 최적화 JSON 수신 성공! - Schedule ID: {}", scheduleId))
+                .onErrorMap(throwable -> {
+                    log.error("❌ OpenAI API 호출 중 심각한 오류 발생 - Schedule ID: {}", scheduleId, throwable);
+                    return new RuntimeException("OpenAI API 호출 실패: " + throwable.getMessage(), throwable);
+                });
+    }
+
+    /**
+     * OpenAI API를 호출하고 응답의 'content'를 추출하는 공통 메소드
+     */
+    private Mono<String> callOpenAiApi(String prompt) {
         log.debug("🤖 생성된 프롬프트: \n{}", prompt);
 
         Map<String, Object> requestBody = Map.of(
@@ -59,136 +87,132 @@ public class AiService {
                         log.warn("API 응답 JSON 변환 실패 (로깅 목적)", e);
                     }
                 })
-                .map(this::extractContentFromApiResponse)
-                .doOnSuccess(content -> log.info("✅ AI 경로 최적화 응답 처리 성공 - Schedule ID: {}", scheduleId))
-                .onErrorMap(throwable -> {
-                    log.error("❌ OpenAI API 호출 중 심각한 오류 발생 - Schedule ID: {}", scheduleId, throwable);
-                    return new RuntimeException("OpenAI API 호출 실패: " + throwable.getMessage(), throwable);
-                });
+                .map(this::extractContentFromApiResponse);
     }
 
-    private String createOptimizationPrompt(UUID scheduleId, LocalDate startDate, LocalDate endDate, String startPlace, LocalTime startTime, List<ItemWithLocationInfo> items) {
-        log.info("프롬프트 생성을 시작합니다...");
-
-        String itemsJson;
-        try {
-            itemsJson = objectMapper.writeValueAsString(items);
-            log.debug("직렬화된 스케줄 아이템 JSON: {}", itemsJson);
-        } catch (JsonProcessingException e) {
-            log.error("스케줄 아이템 JSON 직렬화 실패", e);
-            throw new RuntimeException("JSON 직렬화에 실패했습니다.", e);
-        }
-
-        return String.format("""
-            너는 세계 최고의 여행 일정 최적화 전문가 AI다. 너의 임무는 주어진 여행 정보와 장소 목록을 바탕으로, 가장 효율적이고 논리적인 여행 계획을 세운 뒤, 반드시 지정된 JSON 형식으로만 결과를 반환하는 것이다. 다른 부가적인 설명은 절대 포함해서는 안 된다.
-
-            ---
-            ### **[1] 최종 목표**
-            모든 제약 조건을 준수하여, 여행 기간 내 각 장소의 방문일(`dayNumber`)과 방문 순서(`order`)를 결정한다.
-
-            ---
-            ### **[2] 입력 데이터 형식**
-            너는 아래와 같은 형식의 데이터를 입력받게 될 것이다.
-            * `scheduleId`: 여행 일정의 고유 ID (문자열)
-            * `dateRange`: 여행 기간 (예: "2025-07-01 to 2025-07-10")
-            * `startPlace`: 첫째 날 여행 시작 장소 (예: "서울역")
-            * `startTime`: 첫째 날 여행 시작 시간 (예: "09:00")
-            * `items`: 방문할 장소 목록 (JSON 배열). 각 장소는 `contentId`, `title`, `latitude`, `longitude`, `category` 정보를 포함한다.
-
-            ---
-            ### **[3] 출력 데이터 형식 (매우 중요!)**
-            너의 최종 응답은 반드시 아래 JSON 구조를 따라야 한다. 코드 블록 마커나 다른 설명 없이, 순수한 JSON 객체 하나만 출력해야 한다.
-            ```json
-            {
-              "scheduleId": "입력받은 스케줄 ID",
-              "ScheduleItems": [
-                {
-                  "order": 1,
-                  "contentId": "장소의 contentId",
-                  "dayNumber": 1
-                }
-              ]
-            }
-            ```
-
-            ---
-            ### **[4] 핵심 작업 규칙**
-
-            **[A] 시간 제약 조건 (내부 계산용)**
-            * 하루 활동 시간은 **09:00부터 22:00까지**로 가정한다.
-            * 모든 장소(숙소 제외)는 평균 **2시간** 머무는 것으로 계산한다.
-            * 장소 간 이동 시간은 평균 **30분**으로 계산한다.
-            * 이 시간 정보는 최적의 일정을 짜기 위한 너의 내부 계산에만 사용하고, 최종 JSON 출력에는 포함하지 않는다.
-
-            **[B] 숙소 배정 규칙 (최우선 순위!)**
-            * `items` 목록에서 `category`가 `ACCOMMODATION`인 장소들을 먼저 식별한다.
-            * **1일차:** `items`에 포함된 **첫 번째 숙소**를 1일차 일정의 **마지막(`order`가 가장 큼) 장소**로 배정한다.
-            * **중간일 (2일차 ~ 마지막 전날):**
-                1. **이전 날의 숙소**를 해당일의 **첫 번째(`order`: 1) 장소**로 배정한다.
-                2. `items`에 포함된 **다음 순서의 숙소**를 해당일의 **마지막 장소**로 배정한다.
-            * **마지막 날:** **이전 날의 숙소**를 마지막 날의 **첫 번째(`order`: 1) 장소**로 배정한다. 그 이후로는 숙소를 배정하지 않는다.
-
-            **[C] 카테고리별 일정 계획 규칙**
-            * **숙소(`ACCOMMODATION`)**: 규칙 [B]에 따라 가장 먼저 배정한다.
-            * **식당(`RESTAURANT`)**: 각 날짜별로 **점심(12:00~14:00), 저녁(18:00~20:00) 시간대**에 방문하도록 일정을 구성한다. 하루에 2개의 식당을 배정하는 것을 기본으로 한다.
-            * **기타 장소(`TOURIST_SPOT`, `LEISURE`, `HEALING`):** 숙소와 식당이 배정된 사이의 빈 시간대에 채워 넣는다.
-
-            **[D] 균등 분배 및 경로 최적화 규칙**
-            1. 규칙 [B]와 [C]에 따라 숙소와 식당을 각 날짜에 먼저 배정한다.
-            2. 남아있는 **기타 장소**들을 **(총 장소 개수 / 총 여행일수)** 계산에 따라 각 날짜에 균등하게 분배한다.
-            3. 각 날짜별로 배정된 모든 장소들에 대해, `startPlace`와 위도/경도를 기반으로 **전체 이동 거리가 가장 짧아지는 방문 순서(`order`)**를 결정한다.
-
-            ---
-            ### **[5] 사고 과정 (반드시 따를 것)**
-            아래의 단계를 순서대로 반드시 따라서 최종 JSON을 생성해야 한다.
-            1.  **입력 분석**: `scheduleId`, 여행 기간, 출발 정보, 장소 목록(`items`)을 정확히 파악하고 전체 여행 일수를 계산한다.
-            2.  **장소 분류**: `items` 목록을 `ACCOMMODATION`, `RESTAURANT`, `OTHERS` 세 그룹으로 분류한다.
-            3.  **숙소 배정**: 규칙 [B]에 따라, 각 날짜별 일정 목록에 숙소를 먼저 배치한다.
-            4.  **식당 배정**: 규칙 [C]에 따라, 남은 식당들을 각 날짜의 점심/저녁 시간 슬롯에 맞게 배정한다.
-            5.  **나머지 장소 배정**: `OTHERS` 그룹의 장소들을 규칙 [D]에 따라 각 날짜에 균등하게 분배한다.
-            6.  **일자별 경로 최적화**: 각 날짜별로 완성된 장소 목록을 대상으로, 출발지부터 시작하여 전체 이동 거리가 최소화되도록 방문 순서(`order`)를 최종 결정한다.
-            7.  **최종 JSON 생성**: 위 6단계까지의 결과를 바탕으로, 규칙 [3]에서 정의한 JSON 출력 형식에 맞춰 최종 결과물을 생성한다.
-
-            ---
-            ### **[6] 입력 정보**
-            * 여행 기간: %s 부터 %s 까지
-            * 최초 출발 장소: %s
-            * 최초 출발 시간: %s
-            * 스케줄 ID: %s
-            * 스케줄 아이템 목록:
-            %s
-
-            이제, 위의 모든 규칙과 사고 과정을 거쳐 최종 JSON을 출력해줘.
-            """,
-                startDate,
-                endDate,
-                startPlace,
-                startTime,
-                scheduleId,
-                itemsJson,
-                scheduleId
-        );
-    }
-
+    /**
+     * API 응답에서 실제 content(JSON 문자열)를 추출합니다.
+     */
     private String extractContentFromApiResponse(Map<String, Object> apiResponse) {
-        log.info("API 응답에서 content 추출을 시작합니다...");
         List<Map<String, Object>> choices = (List<Map<String, Object>>) apiResponse.get("choices");
         if (choices == null || choices.isEmpty()) {
-            log.error("API 응답 오류: 'choices' 필드가 없거나 비어있습니다. 응답: {}", apiResponse);
-            throw new RuntimeException("OpenAI 응답에 'choices'가 없습니다.");
+            throw new RuntimeException("OpenAI 응답에 'choices'가 없습니다. 응답: " + apiResponse);
         }
         Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
         if (message == null) {
-            log.error("API 응답 오류: 'message' 필드가 없습니다. 응답: {}", apiResponse);
-            throw new RuntimeException("OpenAI 응답에 'message'가 없습니다.");
+            throw new RuntimeException("OpenAI 응답에 'message'가 없습니다. 응답: " + apiResponse);
         }
         String content = (String) message.get("content");
         if (content == null || content.isBlank()) {
-            log.error("API 응답 오류: 'content' 필드가 비어있습니다. 응답: {}", apiResponse);
-            throw new RuntimeException("OpenAI 응답에 'content'가 비어있습니다.");
+            throw new RuntimeException("OpenAI 응답에 'content'가 비어있습니다. 응답: " + apiResponse);
         }
         log.debug("추출된 content: {}", content);
-        log.info("content 추출을 완료했습니다.");
         return content;
+    }
+
+    /**
+     * AI 요청 프롬프트를 생성하는 역할을 담당하는 정적 중첩 클래스
+     */
+    private static class PromptFactory {
+
+        /**
+         * 1단계: 장소들을 규칙에 따라 날짜별로 배정하고 중간 계획 JSON을 생성하는 프롬프트
+         */
+        static String createFirstStepPrompt(UUID scheduleId, LocalDate startDate, LocalDate endDate, LocalTime startTime, List<ItemWithLocationInfo> items) {
+            String itemsJson;
+            try {
+                // ObjectMapper는 외부에서 주입받을 수 없으므로 여기서 직접 생성합니다.
+                itemsJson = new ObjectMapper().writeValueAsString(items);
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException("JSON 직렬화에 실패했습니다.", e);
+            }
+
+            return String.format("""
+                너는 여행 일정 계획 전문가 AI다. 너의 첫 번째 임무는 주어진 장소 목록을 핵심 규칙에 따라 각 여행일에 논리적으로 배정하고, 중간 계획을 지정된 JSON 형식으로 반환하는 것이다.
+
+                ### **[1] 최종 목표**
+                모든 규칙을 준수하여, 각 장소를 방문할 날짜(`dayNumber`)만 결정하여 그룹화한다. (방문 순서 `order`는 다음 단계에서 결정하므로 아직 신경쓰지 않는다.)
+
+                ### **[2] 핵심 작업 규칙**
+                [A] 숙소 배정 규칙 (최우선 순위!):
+                * `category`가 `ACCOMMODATION`인 장소를 식별한다.
+                * 1일차: 첫 번째 숙소를 1일차 그룹에 포함시킨다. 이 숙소는 그날의 마지막 장소가 될 것이다.
+                * 중간일 (2일차 ~ 마지막 전날): 이전 날의 숙소를 해당일 그룹의 첫 장소로, 다음 순서의 숙소를 해당일 그룹의 마지막 장소로 포함시킨다.
+                * 마지막 날: 이전 날의 숙소를 마지막 날 그룹의 첫 장소로 포함시킨다.
+
+                [B] 카테고리별 일정 계획 규칙:
+                * 식당(`RESTAURANT`): 각 날짜별로 점심, 저녁에 방문하도록 하루 2개씩 배정하는 것을 기본으로 한다.
+                * 기타 장소(`TOURIST_SPOT`, `LEISURE`, `HEALING`): 숙소와 식당 배정 후, 남은 장소들을 전체 여행 기간에 걸쳐 균등하게 분배한다.
+
+                ### **[3] 중간 출력 데이터 형식 (매우 중요!)**
+                너의 응답은 반드시 아래 JSON 구조를 따라야 한다. 다른 설명 없이, 순수한 JSON 객체 하나만 출력해야 한다. `items` 배열에는 해당일에 방문할 장소의 원본 정보를 그대로 넣는다.
+                ```json
+                {
+                  "scheduleId": "입력받은 스케줄 ID",
+                  "dailyPlans": [
+                    {
+                      "dayNumber": 1,
+                      "items": [
+                        {"contentId": "...", "title": "...", "latitude": ..., "longitude": ..., "category": "..."},
+                        {"contentId": "...", "title": "...", "latitude": ..., "longitude": ..., "category": "..."}
+                      ]
+                    }
+                  ]
+                }
+                ```
+
+                ### **[4] 입력 정보**
+                * 여행 기간: %s 부터 %s 까지
+                * 스케줄 ID: %s
+                * 스케줄 아이템 목록:
+                %s
+
+                이제 위의 규칙에 따라 중간 계획 JSON을 생성해줘.
+                """,
+                    startDate, endDate, scheduleId, itemsJson);
+        }
+
+        /**
+         * 2단계: 1단계에서 생성된 중간 계획을 받아, 날짜별로 경로를 최적화하고 최종 JSON을 생성하는 프롬프트
+         */
+        static String createSecondStepPrompt(UUID scheduleId, String startPlace, String intermediatePlanJson) {
+            return String.format("""
+                너는 세계 최고의 여행 경로 최적화 전문가 AI다. 너의 임무는 주어진 날짜별 장소 그룹 목록을 바탕으로, 각 날짜 내에서 이동 거리가 가장 짧아지는 최적의 방문 순서(`order`)를 결정하고, 반드시 지정된 최종 JSON 형식으로 결과를 반환하는 것이다.
+
+                ### **[1] 최종 목표**
+                각 장소의 방문일(`dayNumber`)과 최적화된 방문 순서(`order`)를 결정하여 최종 결과물을 완성한다.
+
+                ### **[2] 핵심 작업 규칙**
+                * 각 `dailyPlans` 배열에 포함된 장소 목록을 대상으로 작업한다.
+                * **1일차:** 입력받은 `최초 출발 장소`에서 시작하여 그날의 모든 장소를 가장 효율적으로 방문하는 순서를 결정한다.
+                * **2일차 이후:** 전날 마지막 장소(주로 숙소)에서 시작하여 그날의 모든 장소를 가장 효율적으로 방문하는 순서를 결정한다.
+                * `category`가 `ACCOMMODATION`인 장소는 해당일의 시작 또는 마지막 방문지여야 한다는 점을 반드시 고려해야 한다.
+                * 위도(`latitude`)와 경도(`longitude`) 정보를 활용하여 지리적으로 가장 가까운 순서대로 `order`를 부여한다.
+
+                ### **[3] 최종 출력 데이터 형식 (매우 중요!)**
+                너의 최종 응답은 반드시 아래 JSON 구조를 따라야 한다. 코드 블록 마커나 다른 설명 없이, 순수한 JSON 객체 하나만 출력해야 한다.
+                ```json
+                {
+                  "scheduleId": "입력받은 스케줄 ID",
+                  "scheduleItems": [
+                    {
+                      "order": 1,
+                      "contentId": "장소의 contentId",
+                      "dayNumber": 1
+                    }
+                  ]
+                }
+                ```
+
+                ### **[4] 입력 정보 (중간 계획)**
+                * 스케줄 ID: %s
+                * 1일차 최초 출발 장소: %s
+                * 날짜별 장소 그룹 목록 (중간 계획):
+                %s
+
+                이제, 이 중간 계획을 바탕으로 경로를 최적화하고, 최종 JSON을 출력해줘.
+                """,
+                    scheduleId, startPlace, intermediatePlanJson);
+        }
     }
 }
