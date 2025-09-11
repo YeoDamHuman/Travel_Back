@@ -194,7 +194,7 @@ public class AiService {
                 ```json
                 {
                   "scheduleId": "입력받은 스케줄 ID",
-                  "scheduleItems": [
+                  "ScheduleItems": [
                     {
                       "order": 1,
                       "contentId": "장소의 contentId",
