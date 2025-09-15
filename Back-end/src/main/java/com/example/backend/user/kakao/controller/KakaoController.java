@@ -43,8 +43,7 @@ public class KakaoController {
     public ResponseEntity<KakaoResponse.loginResponse> kakaoCallback(
             @RequestBody KakaoRequest request
     ) {
-        return kakaoService.getUserInfo(request.getCode());
+        return kakaoService.getUserInfo(request.getCode(), request.getRedirectUri());
     }
-
-
+    
 }
