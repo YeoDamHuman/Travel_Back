@@ -45,5 +45,5 @@ public class KakaoController {
     ) {
         return kakaoService.getUserInfo(request.getCode(), request.getRedirectUri());
     }
-    
+
 }
