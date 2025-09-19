@@ -110,7 +110,6 @@ public class KakaoService {
                             .userNickname(user.getUserNickname())
                             .userProfileImage(user.getUserProfileImage())
                             .userEmail(user.getEmail())
-                            .userName(user.getUserName())
                             .build()
             );
 

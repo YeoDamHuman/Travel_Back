@@ -77,8 +77,16 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://localhost:8080", "http://yeodam.site", "https://yeodam.site", "https://yeodam.vercel.app", "capacitor://localhost"));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+        configuration.setAllowedOriginPatterns(Arrays.asList(
+                "https://yeodam.site",
+                "http://yeodam.site",
+                "https://yeodam.vercel.app",
+                "capacitor://localhost",
+                "http://localhost",        // ✅ 포트 없는 localhost
+                "http://localhost:*"       // ✅ 임의 포트 localhost (Capacitor가 종종 사용)
+                // 필요 시 에뮬레이터: "http://10.0.2.2:*"
+        ));
+        configuration.setAllowedMethods(Arrays.asList("GET","POST","PUT","DELETE","PATCH","OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);

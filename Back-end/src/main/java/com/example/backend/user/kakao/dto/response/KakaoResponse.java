@@ -28,7 +28,5 @@ public class KakaoResponse {
         @Schema(description = "사용자 이메일", example = "HONG@example.com")
         private String userEmail;
 
-        @Schema(description = "사용자 이름", example = "홍길동")
-        private String userName;
     }
 }
