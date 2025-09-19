@@ -7,5 +7,4 @@ import lombok.Setter;
 @Setter
 public class KakaoRequest {
     private String code;
-    private String redirectUri;
 }
