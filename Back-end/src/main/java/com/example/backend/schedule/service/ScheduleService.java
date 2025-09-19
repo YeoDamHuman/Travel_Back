@@ -4,12 +4,14 @@ import com.example.backend.board.repository.BoardRepository;
 import com.example.backend.common.auth.AuthUtil;
 import com.example.backend.region.service.RegionService;
 import com.example.backend.region.service.RegionService.CodePair;
+import com.example.backend.schedule.dto.request.RouteOptimizerRequest;
 import com.example.backend.schedule.dto.request.ScheduleRequest.ScheduleCreateRequest;
 import com.example.backend.schedule.dto.request.ScheduleRequest.ScheduleUpdateRequest;
+import com.example.backend.schedule.dto.response.RouteOptimizerResponse;
 import com.example.backend.schedule.dto.response.ScheduleResponse.ScheduleDetailResponse;
 import com.example.backend.schedule.dto.response.ScheduleResponse.ScheduleListInfo;
-import com.example.backend.schedule.dto.response.ScheduleResponse.ScheduleUser;
 import com.example.backend.schedule.dto.response.ScheduleResponse.ScheduleItemInfo;
+import com.example.backend.schedule.dto.response.ScheduleResponse.ScheduleUser;
 import com.example.backend.schedule.entity.Schedule;
 import com.example.backend.schedule.repository.ScheduleRepository;
 import com.example.backend.scheduleItem.entity.ScheduleItem;
@@ -19,15 +21,13 @@ import com.example.backend.tour.entity.TourCategory;
 import com.example.backend.tour.webclient.TourApiClient;
 import com.example.backend.user.entity.User;
 import com.example.backend.user.repository.UserRepository;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -45,7 +45,7 @@ public class ScheduleService {
     private final ScheduleItemRepository scheduleItemRepository;
     private final ScheduleItemService scheduleItemService;
     private final AiService aiService;
-    private final ObjectMapper objectMapper;
+    private final RouteOptimizerService routeOptimizerService;
     private final TourApiClient tourApiClient;
     private final RegionService regionService;
     private final BoardRepository boardRepository;
@@ -315,15 +315,16 @@ public class ScheduleService {
                 .build();
     }
 
-
     /**
-     * AI 서비스를 활용하여 스케줄의 경로를 최적화합니다.
+     * AI와 경로 최적화 서비스를 활용하여 스케줄의 경로를 최적화합니다.
+     * 1. AiService를 호출하여 장소들을 날짜별로 그룹화합니다.
+     * 2. RouteOptimizerService를 호출하여 각 날짜 내의 동선을 최적화합니다.
      * 스케줄에 참여한 사용자만 경로를 최적화할 수 있습니다.
      *
      * @param scheduleId 최적화할 스케줄의 ID.
      * @throws IllegalArgumentException 스케줄을 찾을 수 없거나 스케줄에 아이템이 없는 경우.
      * @throws AccessDeniedException    현재 사용자가 스케줄을 최적화할 권한이 없는 경우.
-     * @throws RuntimeException         AI 응답 JSON 파싱에 실패한 경우.
+     * @throws RuntimeException         AI 응답 JSON 파싱 또는 경로 최적화에 실패한 경우.
      */
     @Transactional
     public void optimizeRoute(UUID scheduleId) {
@@ -336,16 +337,11 @@ public class ScheduleService {
         }
 
         List<ScheduleItem> items = scheduleItemRepository.findAllByScheduleId_ScheduleId(scheduleId);
-
         if (items.isEmpty()) {
             throw new IllegalArgumentException("해당 스케줄에 아이템이 없습니다.");
         }
 
-        List<String> contentIds = items.stream()
-                .map(ScheduleItem::getContentId)
-                .distinct()
-                .collect(Collectors.toList());
-
+        List<String> contentIds = items.stream().map(ScheduleItem::getContentId).distinct().collect(Collectors.toList());
         Map<String, Map<String, Double>> locationMap = tourApiClient.getTourLocationMapByContentIds(contentIds);
         Map<String, String> tourTitlesMap = tourApiClient.getTourTitlesMapByContentIds(contentIds);
         Map<String, TourCategory> tourCategoriesMap = tourApiClient.getTourCategoriesMapByContentIds(contentIds);
@@ -357,69 +353,61 @@ public class ScheduleService {
                     String title = tourTitlesMap.getOrDefault(contentId, "정보 없음");
                     double latitude = loc.getOrDefault("latitude", 0.0);
                     double longitude = loc.getOrDefault("longitude", 0.0);
-                    String category = Optional.ofNullable(tourCategoriesMap.get(contentId))
-                            .map(Enum::name)
-                            .orElse("ETC");
+                    String category = Optional.ofNullable(tourCategoriesMap.get(contentId)).map(Enum::name).orElse("ETC");
                     return new AiService.ItemWithLocationInfo(contentId, title, latitude, longitude, category);
                 })
                 .collect(Collectors.toList());
 
-        String optimizedJson = aiService.getOptimizedRouteJson(
+        log.info("▶️ [1/2] AiService 호출: 날짜별 그룹화 시작");
+        String dailyPlanJson = aiService.createDailyPlanJson(
                 schedule.getScheduleId(),
                 schedule.getStartDate(),
                 schedule.getEndDate(),
-                schedule.getStartPlace(),
                 schedule.getStartTime(),
                 itemsWithLocation
         ).block();
 
+        log.info("▶️ [2/2] RouteOptimizerService 호출: 동선 최적화 시작");
+        AiService.ItemWithLocationInfo firstItem = itemsWithLocation.get(0);
+        RouteOptimizerRequest.PlaceInfo startPlaceInfo = new RouteOptimizerRequest.PlaceInfo(
+                firstItem.contentId(), firstItem.title(), firstItem.latitude(), firstItem.longitude(), firstItem.category()
+        );
+
         try {
-            Map<String, Object> responseMap = objectMapper.readValue(optimizedJson, new TypeReference<>() {});
-            List<Map<String, Object>> optimizedItems = (List<Map<String, Object>>) responseMap.get("ScheduleItems");
+            RouteOptimizerResponse optimizedResponse = routeOptimizerService.optimizeRoute(dailyPlanJson, startPlaceInfo);
+            List<RouteOptimizerResponse.OptimizedScheduleItem> optimizedItems = optimizedResponse.getScheduleItems();
 
-            if (optimizedItems == null) {
-                throw new RuntimeException("AI 응답에 'ScheduleItems' 필드가 없습니다.");
+            if (optimizedItems == null || optimizedItems.isEmpty()) {
+                throw new RuntimeException("경로 최적화 결과가 비어있습니다.");
             }
 
-            List<ScheduleItem> updatedItems = new ArrayList<>();
+            log.info("✅ 최적화 완료. DB에 결과 반영 시작");
+            Map<String, ScheduleItem> originalItemMap = items.stream()
+                    .collect(Collectors.toMap(ScheduleItem::getContentId, item -> item, (item1, item2) -> item1));
 
-            for (Map<String, Object> itemData : optimizedItems) {
-                String contentId = itemData.get("contentId").toString();
-                int order = (int) itemData.get("order");
-                int dayNumber = (int) itemData.get("dayNumber");
-
-                items.stream()
-                        .filter(item -> item.getContentId().equals(contentId))
-                        .findFirst()
-                        .ifPresent(originalItem -> {
-                            boolean isAccommodation = Optional.ofNullable(tourCategoriesMap.get(contentId))
-                                    .map(Enum::name)
-                                    .orElse("")
-                                    .equals("ACCOMMODATION");
-
-                            ScheduleItem.ScheduleItemBuilder builder = ScheduleItem.builder()
-                                    .contentId(originalItem.getContentId())
-                                    .memo(originalItem.getMemo())
-                                    .cost(originalItem.getCost())
-                                    .scheduleId(originalItem.getScheduleId())
-                                    .order(order)
-                                    .dayNumber(dayNumber);
-
-                            if (isAccommodation) {
-                                builder.scheduleItemId(UUID.randomUUID());
-                            } else {
-                                builder.scheduleItemId(originalItem.getScheduleItemId());
-                            }
-
-                            updatedItems.add(builder.build());
-                        });
+            List<ScheduleItem> itemsToSave = new ArrayList<>();
+            for (RouteOptimizerResponse.OptimizedScheduleItem optimizedItem : optimizedItems) {
+                ScheduleItem originalItem = originalItemMap.get(optimizedItem.getContentId());
+                if (originalItem != null) {
+                    ScheduleItem updatedItem = ScheduleItem.builder()
+                            .scheduleItemId(originalItem.getScheduleItemId())
+                            .contentId(originalItem.getContentId())
+                            .cost(originalItem.getCost())
+                            .memo(originalItem.getMemo())
+                            .scheduleId(originalItem.getScheduleId())
+                            .dayNumber(optimizedItem.getDayNumber())
+                            .order(optimizedItem.getOrder())
+                            .build();
+                    itemsToSave.add(updatedItem);
+                }
             }
 
-            scheduleItemRepository.saveAll(updatedItems);
+            scheduleItemRepository.saveAll(itemsToSave);
+            log.info("✅ DB 반영 완료!");
 
-        } catch (JsonProcessingException e) {
-            log.error("AI 응답 JSON 파싱 실패", e);
-            throw new RuntimeException("AI 응답 JSON 파싱에 실패했습니다.", e);
+        } catch (IOException e) {
+            log.error("경로 최적화 또는 결과 파싱 중 오류 발생", e);
+            throw new RuntimeException("경로 최적화에 실패했습니다.", e);
         }
     }
 
