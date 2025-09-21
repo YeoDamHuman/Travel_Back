@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -25,22 +26,37 @@ public class RouteOptimizerService {
      * @return 최종적으로 순서가 결정된 스케줄 객체
      */
     public RouteOptimizerResponse optimizeRoute(String dailyPlanJson, RouteOptimizerRequest.PlaceInfo startPlace) throws IOException {
-        // 1. AI가 만든 JSON을 Request DTO 객체로 변환
         RouteOptimizerRequest requestDto = objectMapper.readValue(dailyPlanJson, RouteOptimizerRequest.class);
         List<RouteOptimizerResponse.OptimizedScheduleItem> finalItems = new ArrayList<>();
+        int totalDays = requestDto.getDailyPlans().size();
 
-        // 2. 일자별로 루프를 돌며 동선 최적화 수행
-        RouteOptimizerRequest.PlaceInfo currentStartPlace = startPlace; // 루프의 시작점
+        RouteOptimizerRequest.PlaceInfo currentStartPlace = startPlace;
 
         for (RouteOptimizerRequest.DailyPlan day : requestDto.getDailyPlans()) {
             log.info("▶️ {}일차 동선 최적화 시작...", day.getDayNumber());
 
+            final RouteOptimizerRequest.PlaceInfo startNodeForThisDay = currentStartPlace;
+
             List<RouteOptimizerRequest.PlaceInfo> placesToVisit = new ArrayList<>(day.getItems());
             List<RouteOptimizerRequest.PlaceInfo> optimizedOrder = new ArrayList<>();
 
-            // 3. 해당일의 장소들을 Nearest Neighbor 알고리즘으로 정렬
-            RouteOptimizerRequest.PlaceInfo currentLocation = currentStartPlace;
+            RouteOptimizerRequest.PlaceInfo endAccommodation = null;
+            if (day.getDayNumber() < totalDays) {
+                Optional<RouteOptimizerRequest.PlaceInfo> accommodationOpt = placesToVisit.stream()
+                        .filter(p -> "ACCOMMODATION".equals(p.getCategory()) && !p.equals(startNodeForThisDay))
+                        .findFirst();
+                if (accommodationOpt.isPresent()) {
+                    endAccommodation = accommodationOpt.get();
+                    placesToVisit.remove(endAccommodation);
+                    log.info("  📌 {}일차 도착 숙소 고정: {}", day.getDayNumber(), endAccommodation.getTitle());
+                }
+            }
 
+            if (day.getDayNumber() > 1) {
+                placesToVisit.remove(startNodeForThisDay);
+            }
+
+            RouteOptimizerRequest.PlaceInfo currentLocation = startNodeForThisDay;
             while (!placesToVisit.isEmpty()) {
                 RouteOptimizerRequest.PlaceInfo nearest = findNearest(currentLocation, placesToVisit);
                 optimizedOrder.add(nearest);
@@ -48,19 +64,30 @@ public class RouteOptimizerService {
                 currentLocation = nearest;
             }
 
-            // 4. 최적화된 순서대로 Response DTO 포맷에 추가
-            for (int i = 0; i < optimizedOrder.size(); i++) {
-                RouteOptimizerRequest.PlaceInfo item = optimizedOrder.get(i);
+            if (endAccommodation != null) {
+                optimizedOrder.add(endAccommodation);
+            }
+
+            List<RouteOptimizerRequest.PlaceInfo> finalOrderForDay = new ArrayList<>();
+            if (day.getDayNumber() > 1) {
+                finalOrderForDay.add(startNodeForThisDay);
+            }
+            finalOrderForDay.addAll(optimizedOrder);
+
+
+            for (int i = 0; i < finalOrderForDay.size(); i++) {
+                RouteOptimizerRequest.PlaceInfo item = finalOrderForDay.get(i);
                 finalItems.add(new RouteOptimizerResponse.OptimizedScheduleItem(i + 1, item.getContentId(), day.getDayNumber()));
             }
 
-            // 5. 다음 날의 시작점을 현재 날짜의 마지막 장소(숙소)로 업데이트
-            currentStartPlace = optimizedOrder.get(optimizedOrder.size() - 1);
+            // 루프의 마지막에서 다음 루프를 위해 currentStartPlace 값을 업데이트하는 것은 그대로 유지
+            currentStartPlace = finalOrderForDay.get(finalOrderForDay.size() - 1);
             log.info("✅ {}일차 동선 최적화 완료! 다음 날 시작점: {}", day.getDayNumber(), currentStartPlace.getTitle());
         }
 
         return new RouteOptimizerResponse(requestDto.getScheduleId(), finalItems);
     }
+
 
     /**
      * 현재 위치에서 가장 가까운 장소를 찾습니다.
