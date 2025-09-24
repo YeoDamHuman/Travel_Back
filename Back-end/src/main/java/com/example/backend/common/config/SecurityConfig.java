@@ -82,7 +82,9 @@ public class SecurityConfig {
                 "https://yeodam.vercel.app",
                 "capacitor://localhost",
                 "http://localhost",        // ✅ 포트 없는 localhost
-                "http://localhost:*"       // ✅ 임의 포트 localhost (Capacitor가 종종 사용)
+                "http://localhost:*",       // ✅ 임의 포트 localhost (Capacitor가 종종 사용)
+                "https://localhost",
+                "https://localhost:*"
                 // 필요 시 에뮬레이터: "http://10.0.2.2:*"
         ));
         configuration.setAllowedMethods(Arrays.asList("GET","POST","PUT","DELETE","PATCH","OPTIONS"));
