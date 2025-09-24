@@ -28,23 +28,32 @@ public class KakaoService {
     @Value("${kakao.redirectUri}")
     private String redirectUri;
 
-    public String getKakaoAuthUrl() {
+    @Value("${kakao.mobileRedirectUri}")
+    private String mobileRedirectUri;
+
+    public String getKakaoAuthUrl(boolean mobile) {
+        String targetRedirectUri = mobile ? mobileRedirectUri : redirectUri;
         return "https://kauth.kakao.com/oauth/authorize?response_type=code"
                 + "&client_id=" + restApiKey
-                + "&redirect_uri=" + redirectUri
+                + "&redirect_uri=" + targetRedirectUri
                 + "&scope=account_email,profile_nickname,profile_image";
     }
 
     public ResponseEntity<KakaoResponse.loginResponse> getUserInfo(String code) {
+        return getUserInfo(code, false);
+    }
+
+    public ResponseEntity<KakaoResponse.loginResponse> getUserInfo(String code, boolean mobile) {
         try {
             RestTemplate restTemplate = new RestTemplate();
+            String targetRedirectUri = mobile ? mobileRedirectUri : redirectUri;
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
             MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
             params.add("grant_type", "authorization_code");
             params.add("client_id", restApiKey);
-            params.add("redirect_uri", redirectUri);
+            params.add("redirect_uri", targetRedirectUri);
             params.add("code", code);
 
             HttpEntity<MultiValueMap<String, String>> tokenRequest = new HttpEntity<>(params, headers);
