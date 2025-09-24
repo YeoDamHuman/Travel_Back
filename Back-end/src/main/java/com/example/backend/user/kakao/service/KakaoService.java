@@ -28,18 +28,10 @@ public class KakaoService {
     @Value("${kakao.redirectUri}")
     private String redirectUri;
 
-    @Value("${kakao.mobileRedirectUri:https://yeodam.vercel.app/kakao-callback}")
-    private String mobileRedirectUri;
-
     public String getKakaoAuthUrl() {
-        return getKakaoAuthUrl(false);
-    }
-
-    public String getKakaoAuthUrl(boolean mobile) {
-        String targetRedirectUri = mobile ? mobileRedirectUri : redirectUri;
         return "https://kauth.kakao.com/oauth/authorize?response_type=code"
                 + "&client_id=" + restApiKey
-                + "&redirect_uri=" + targetRedirectUri
+                + "&redirect_uri=" + redirectUri
                 + "&scope=account_email,profile_nickname,profile_image";
     }
 

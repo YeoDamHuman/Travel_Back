@@ -27,21 +27,9 @@ public class KakaoController {
     )
     @ApiResponse(responseCode = "302", description = "카카오 로그인 페이지로 리디렉션됨")
     @GetMapping("/login")
-    public void redirectToKakao(HttpServletResponse response,
-                                @RequestParam(value = "mobile", required = false, defaultValue = "false") boolean mobile) throws IOException {
-        String kakaoAuthUrl = kakaoService.getKakaoAuthUrl(mobile);
+    public void redirectToKakao(HttpServletResponse response) throws IOException {
+        String kakaoAuthUrl = kakaoService.getKakaoAuthUrl();
         response.sendRedirect(kakaoAuthUrl);
-    }
-
-    @Operation(
-            summary = "모바일 앱용 카카오 로그인 URL 반환",
-            description = "모바일 앱에서 사용할 카카오 로그인 URL을 JSON으로 반환합니다."
-    )
-    @ApiResponse(responseCode = "200", description = "카카오 로그인 URL 반환 성공")
-    @GetMapping("/mobile/login-url")
-    public ResponseEntity<Map<String, String>> getMobileKakaoLoginUrl() {
-        String kakaoAuthUrl = kakaoService.getKakaoAuthUrl(true);
-        return ResponseEntity.ok(Map.of("loginUrl", kakaoAuthUrl));
     }
 
     @Operation(
