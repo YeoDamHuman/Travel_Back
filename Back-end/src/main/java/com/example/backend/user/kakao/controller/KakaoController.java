@@ -27,10 +27,8 @@ public class KakaoController {
     )
     @ApiResponse(responseCode = "302", description = "카카오 로그인 페이지로 리디렉션됨")
     @GetMapping("/login")
-    public void redirectToKakao(
-            @Parameter(description = "모바일 앱 여부") @RequestParam(value = "mobile", required = false, defaultValue = "false") boolean mobile,
-            HttpServletResponse response) throws IOException {
-        String kakaoAuthUrl = kakaoService.getKakaoAuthUrl(mobile);
+    public void redirectToKakao(HttpServletResponse response) throws IOException {
+        String kakaoAuthUrl = kakaoService.getKakaoAuthUrl();
         response.sendRedirect(kakaoAuthUrl);
     }
 
