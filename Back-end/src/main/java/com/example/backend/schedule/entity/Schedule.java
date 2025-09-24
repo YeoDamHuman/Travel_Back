@@ -54,10 +54,6 @@ public class Schedule {
     @Column(name = "startTime", nullable = false)
     private LocalTime startTime;
 
-    @Builder.Default
-    @Column(name = "is_boarded", nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE")
-    private boolean isBoarded = false;
-
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
             name = "schedule_member",
@@ -66,8 +62,4 @@ public class Schedule {
     )
     @Builder.Default
     private Set<User> users = new HashSet<>();
-
-    public void setIsBoarded(boolean isBoarded) {
-        this.isBoarded = isBoarded;
-    }
 }

@@ -35,6 +35,14 @@ public class BoardService {
     private final UserRepository userRepository;
     private final ScheduleRepository scheduleRepository;
 
+    /**
+     * 새로운 게시글을 생성합니다.
+     *
+     * @param requestDto 게시글 생성에 필요한 정보(제목, 내용, 태그, 이미지 URL, 스케줄 ID).
+     * @param userId     게시글을 작성하는 사용자의 ID.
+     * @return 생성된 게시글과 스케줄의 ID를 포함하는 응답 DTO.
+     * @throws IllegalArgumentException 유저 또는 스케줄을 찾을 수 없는 경우.
+     */
     public BoardCreateResponseDto createBoard(BoardRequestDto requestDto, UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("유저를 찾을 수 없습니다."));
@@ -58,15 +66,19 @@ public class BoardService {
 
         Board saved = boardRepository.save(board);
 
-        schedule.setIsBoarded(true);
-        scheduleRepository.save(schedule);
-
         return BoardCreateResponseDto.builder()
                 .boardId(saved.getBoardId())
                 .scheduleId(saved.getSchedule().getScheduleId())
                 .build();
     }
 
+    /**
+     * 전체 게시글 목록을 페이지네이션하여 조회합니다.
+     *
+     * @param page 페이지 번호 (0부터 시작).
+     * @param size 페이지 당 게시글 수.
+     * @return 게시글 목록 정보 DTO 리스트.
+     */
     public List<BoardListResponseDto> getBoardList(int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         Page<Board> boards = boardRepository.findAll(pageable);
@@ -91,7 +103,14 @@ public class BoardService {
         }).toList();
     }
 
-    //상세 조회
+    /**
+     * 특정 게시글의 상세 정보를 조회합니다.
+     * 조회 시 해당 게시글의 조회수가 1 증가합니다.
+     *
+     * @param boardId 조회할 게시글의 ID.
+     * @return 게시글의 상세 정보와 댓글 목록을 포함하는 응답 DTO.
+     * @throws IllegalArgumentException 존재하지 않는 게시글 ID일 경우.
+     */
     @Transactional
     public BoardDetailResponseDto getBoardDetail(UUID boardId) {
         Board board = boardRepository.findById(boardId)
@@ -103,11 +122,8 @@ public class BoardService {
                 .map(BoardImage::getImgUrl)
                 .toList();
 
-
-        // 댓글 페이징 조회 (처음 5개만)
         Pageable pageable = PageRequest.of(0, 5, Sort.by("createdAt").descending());
         Page<Comment> commentPage = commentRepository.findByBoardId(board, pageable);
-
 
         List<CommentResponseDto> comments = commentPage.stream()
                 .map(comment -> CommentResponseDto.builder()
@@ -135,8 +151,15 @@ public class BoardService {
                 .build();
     }
 
-
-    //수정
+    /**
+     * 특정 게시글을 수정합니다.
+     *
+     * @param boardId    수정할 게시글의 ID.
+     * @param userId     수정을 시도하는 사용자의 ID.
+     * @param requestDto 게시글 수정 정보 DTO.
+     * @throws IllegalArgumentException 존재하지 않는 게시글 ID일 경우.
+     * @throws SecurityException        본인이 작성한 게시글이 아닐 경우.
+     */
     @Transactional
     public void updateBoard(UUID boardId, UUID userId, BoardUpdateRequestDto requestDto) {
         Board board = boardRepository.findById(boardId)
@@ -162,7 +185,14 @@ public class BoardService {
         }
     }
 
-    //삭제
+    /**
+     * 특정 게시글을 삭제합니다.
+     *
+     * @param boardId 삭제할 게시글의 ID.
+     * @param userId  삭제를 시도하는 사용자의 ID.
+     * @throws IllegalArgumentException 존재하지 않는 게시글 ID일 경우.
+     * @throws SecurityException        본인이 작성한 게시글이 아닐 경우.
+     */
     @Transactional
     public void deleteBoard(UUID boardId, UUID userId) {
         Board board = boardRepository.findById(boardId)
@@ -172,22 +202,21 @@ public class BoardService {
             throw new SecurityException("본인이 작성한 게시글만 삭제할 수 있습니다.");
         }
 
-        Schedule schedule = board.getSchedule();
-        if (schedule != null) {
-            schedule.setIsBoarded(false);
-            scheduleRepository.save(schedule);
-        }
-
         boardRepository.delete(board);
     }
 
-    //신고
+    /**
+     * 특정 게시글을 신고합니다. 신고 수는 1씩 증가합니다.
+     *
+     * @param boardId 신고할 게시글의 ID.
+     * @throws IllegalArgumentException 존재하지 않는 게시글 ID일 경우.
+     */
     @Transactional
     public void reportBoard(UUID boardId) {
         Board board = boardRepository.findById(boardId)
                 .orElseThrow(() -> new IllegalArgumentException("게시글이 존재하지 않습니다."));
 
-        board.setBoardReport(board.getBoardReport() + 1);  // 현재 신고수 + 1
+        board.setBoardReport(board.getBoardReport() + 1);
     }
 
 }

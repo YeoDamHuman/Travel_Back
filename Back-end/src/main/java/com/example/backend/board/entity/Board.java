@@ -1,13 +1,11 @@
 package com.example.backend.board.entity;
 
-
 import com.example.backend.schedule.entity.Schedule;
 import com.example.backend.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.time.LocalDateTime;
@@ -48,7 +46,7 @@ public class Board {
     @Column(name = "tag", length = 200)
     private String tag;
 
-    @OneToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "schedule_id", referencedColumnName = "schedule_id")
     private Schedule schedule;
 
@@ -87,5 +85,3 @@ public class Board {
     }
 
 }
-
-

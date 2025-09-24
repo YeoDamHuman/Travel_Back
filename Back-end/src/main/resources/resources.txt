@@ -1,1 +1,0 @@
-여기다가 application.properties 파일 생성해서 적용하면 됨
