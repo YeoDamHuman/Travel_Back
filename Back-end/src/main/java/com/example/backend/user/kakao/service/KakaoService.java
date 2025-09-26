@@ -13,6 +13,8 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 @Service
@@ -28,11 +30,15 @@ public class KakaoService {
     @Value("${kakao.redirectUri}")
     private String redirectUri;
 
-    public String getKakaoAuthUrl() {
-        return "https://kauth.kakao.com/oauth/authorize?response_type=code"
+    public String getKakaoAuthUrl(String state) {
+        String base = "https://kauth.kakao.com/oauth/authorize?response_type=code"
                 + "&client_id=" + restApiKey
                 + "&redirect_uri=" + redirectUri
                 + "&scope=account_email,profile_nickname,profile_image";
+        if (state != null && !state.isBlank()) {
+            base += "&state=" + URLEncoder.encode(state, StandardCharsets.UTF_8);
+        }
+        return base;
     }
 
     public ResponseEntity<KakaoResponse.loginResponse> getUserInfo(String code) {
