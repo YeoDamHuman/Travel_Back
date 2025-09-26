@@ -21,19 +21,33 @@ public class KakaoController {
 
     private final KakaoService kakaoService;
 
-    // 로그인 페이지 리디렉션
+    @Operation(
+            summary = "카카오 로그인 페이지 리디렉션",
+            description = "카카오 로그인 페이지로 리디렉션합니다. 프론트는 이 URL로 GET 요청하세요."
+    )
     @GetMapping("/login")
-    public void redirectToKakao(HttpServletResponse response) throws IOException {
-        String kakaoAuthUrl = kakaoService.getKakaoAuthUrl();
+    public void redirectToKakao(
+            @RequestParam(value = "state", required = false) String state,
+            HttpServletResponse response
+    ) throws IOException {
+        String kakaoAuthUrl = kakaoService.getKakaoAuthUrl(state);
         response.sendRedirect(kakaoAuthUrl);
     }
 
-    // 카카오 콜백 (백엔드 직접 받음)
-    @GetMapping("/callback")
+
+    @Operation(
+            summary = "카카오 로그인 콜백",
+            description = "카카오 로그인 완료 후 받은 code를 이용해 JWT 및 유저 정보를 반환합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "JWT 및 유저 정보 반환 성공"),
+    })
+    @PostMapping("/callback")
     public ResponseEntity<KakaoResponse.loginResponse> kakaoCallback(
-            @RequestParam String code,
-            @RequestParam(required = false) String state
+            @RequestBody KakaoRequest request
     ) {
-        return kakaoService.getUserInfo(code);
+        return kakaoService.getUserInfo(request.getCode());
     }
+
+
 }
