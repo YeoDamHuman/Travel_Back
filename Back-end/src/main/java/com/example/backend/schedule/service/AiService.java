@@ -150,7 +150,7 @@ public class AiService {
               ]
             }
             ```
-
+3
             ### **입력 정보**
             * 여행 기간: %s ~ %s
             * 스케줄 ID: %s
