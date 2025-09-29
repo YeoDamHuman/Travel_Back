@@ -14,6 +14,8 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 /**
@@ -35,13 +37,20 @@ public class KakaoService {
 
     /**
      * 사용자가 카카오 인증을 시작할 수 있는 URL을 생성하여 반환합니다.
+     * CSRF 방지를 위한 state 파라미터를 포함할 수 있습니다.
+     * @param state CSRF 공격 방지를 위한 임의의 문자열
      * @return 카카오 인가 코드 요청 URL
      */
-    public String getKakaoAuthUrl() {
-        return "https://kauth.kakao.com/oauth/authorize?response_type=code"
+    public String getKakaoAuthUrl(String state) {
+        String url = "https://kauth.kakao.com/oauth/authorize?response_type=code"
                 + "&client_id=" + restApiKey
                 + "&redirect_uri=" + redirectUri
                 + "&scope=account_email,profile_nickname,profile_image";
+
+        if (state != null && !state.isBlank()) {
+            url += "&state=" + URLEncoder.encode(state, StandardCharsets.UTF_8);
+        }
+        return url;
     }
 
     /**
