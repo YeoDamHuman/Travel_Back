@@ -1,5 +1,6 @@
 package com.example.backend.user.kakao.service;
 
+import com.example.backend.file.service.CloudinaryUploader;
 import com.example.backend.jwt.config.JWTGenerator;
 import com.example.backend.jwt.dto.JwtDto;
 import com.example.backend.user.kakao.dto.response.KakaoResponse;
@@ -17,12 +18,16 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
+/**
+ * 카카오 소셜 로그인을 처리하는 서비스 클래스입니다.
+ */
 @Service
 @RequiredArgsConstructor
 public class KakaoService {
 
     private final UserRepository userRepository;
     private final JWTGenerator jwtGenerator;
+    private final CloudinaryUploader cloudinaryUploader;
 
     @Value("${kakao.restApiKey}")
     private String restApiKey;
@@ -30,17 +35,30 @@ public class KakaoService {
     @Value("${kakao.redirectUri}")
     private String redirectUri;
 
+    /**
+     * 사용자가 카카오 인증을 시작할 수 있는 URL을 생성하여 반환합니다.
+     * CSRF 방지를 위한 state 파라미터를 포함할 수 있습니다.
+     * @param state CSRF 공격 방지를 위한 임의의 문자열
+     * @return 카카오 인가 코드 요청 URL
+     */
     public String getKakaoAuthUrl(String state) {
-        String base = "https://kauth.kakao.com/oauth/authorize?response_type=code"
+        String url = "https://kauth.kakao.com/oauth/authorize?response_type=code"
                 + "&client_id=" + restApiKey
                 + "&redirect_uri=" + redirectUri
                 + "&scope=account_email,profile_nickname,profile_image";
+
         if (state != null && !state.isBlank()) {
-            base += "&state=" + URLEncoder.encode(state, StandardCharsets.UTF_8);
+            url += "&state=" + URLEncoder.encode(state, StandardCharsets.UTF_8);
         }
-        return base;
+        return url;
     }
 
+    /**
+     * 카카오로부터 받은 인가 코드를 사용하여 사용자를 인증하고,
+     * 신규 사용자인 경우 회원가입 처리 후 JWT 토큰과 사용자 정보를 반환합니다.
+     * @param code 카카오 리디렉션을 통해 받은 인가 코드
+     * @return JWT 토큰 및 사용자 정보가 담긴 ResponseEntity
+     */
     public ResponseEntity<KakaoResponse.loginResponse> getUserInfo(String code) {
         try {
             RestTemplate restTemplate = new RestTemplate();
@@ -76,17 +94,19 @@ public class KakaoService {
 
             String email = (String) kakaoAccount.get("email");
             String nickname = (String) profile.get("nickname");
-            String profileImage = (String) profile.get("profile_image_url");
+            String tempProfileImageUrl = (String) profile.get("profile_image_url");
 
             User user;
             if (userRepository.existsByEmail(email)) {
                 user = userRepository.findByEmail(email).orElseThrow();
             } else {
+                String permanentImageUrl = cloudinaryUploader.uploadImageFromUrl(tempProfileImageUrl, "user-profiles");
+
                 user = User.builder()
                         .email(email)
                         .userName(nickname)
                         .userNickname(nickname)
-                        .userProfileImage(profileImage)
+                        .userProfileImage(permanentImageUrl)
                         .userRole(User.Role.USER)
                         .build();
                 userRepository.save(user);
@@ -104,6 +124,7 @@ public class KakaoService {
             );
 
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(null);
