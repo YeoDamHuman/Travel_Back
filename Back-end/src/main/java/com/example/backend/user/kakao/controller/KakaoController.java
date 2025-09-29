@@ -25,12 +25,15 @@ public class KakaoController {
             summary = "카카오 로그인 페이지 리디렉션",
             description = "카카오 로그인 페이지로 리디렉션합니다. 프론트는 이 URL로 GET 요청하세요."
     )
-    @ApiResponse(responseCode = "302", description = "카카오 로그인 페이지로 리디렉션됨")
     @GetMapping("/login")
-    public void redirectToKakao(HttpServletResponse response) throws IOException {
-        String kakaoAuthUrl = kakaoService.getKakaoAuthUrl();
+    public void redirectToKakao(
+            @RequestParam(value = "state", required = false) String state,
+            HttpServletResponse response
+    ) throws IOException {
+        String kakaoAuthUrl = kakaoService.getKakaoAuthUrl(state);
         response.sendRedirect(kakaoAuthUrl);
     }
+
 
     @Operation(
             summary = "카카오 로그인 콜백",
